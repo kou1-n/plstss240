@@ -1,0 +1,171 @@
+
+     ************************************************
+     **                                            **
+     **     Welcome to "PLSTss"  Version 2.3       **
+     **                          ( 2012.11.20 )    **
+     **                                            **
+     ************************************************
+
+
+*) Enter the input file name without extension:  
+
+   ***** Information for the Renumbered DOF does NOT exist! *****
+         Use the Default Numbering for Assemble
+
+
+     CHECKing the FEM data ............................. done!!
+
+   ***** PARDISO Solver will be Used for the Analysis *****
+       with Compressed Row Storage format for Upper Part
+
+   ***** PLSTss Parameters for FE-model *****
+      1) Total Number of Nodes:                     27
+      2) Total Number of Elements:                   8
+      3) Total Number of Degrees of Freedom:        81
+      4) Total DOF to be solved:                    33
+      5) Total Stiffness Array Size:              1584
+      6) Total SAS to be solved:                   393
+      7) Number of DOF/node:                         3
+      8) Number of Nodes/Element:                    8
+      9) Number of Material Properties:              1
+     10) Number of Material Angles:                  1
+     11) Number of Loading Sets:                     1
+     12) Number of Point Loads:                      0
+     13) Number of Distributed Loads:                0
+     14) Number of Body Forces:                      0
+     15) Number of Prescribed Displacements:        28
+
+      *) TOLERANCE of this computation:    1.00000E-10
+
+
+   ***** PLSTss Array Size for Computation *****
+     *) Total Array Size Required for Computation:      13566
+     *) Array Size Declared in "main.f" (NDIM):     100000000
+     *) Approximately Memory Size:                    762.939 MByte
+
+
+     READing the FEM data ................ done!!
+
+
+***** Loading Step :     1/   10 *****
+  Iteration :   1
+
+          Total Peak Memory during factorization:        162 (KB)
+          Parmanet Memory from phase1 to phase3:         162 (KB)
+          Total Double Precision Memory for solving:       9 (KB)
+
+         df : 0.10000E+00, dfact :  0.10000E+00,      arc :  0.00000E+00
+      rnorm : 0.81901E-13, fnorm :  0.11834E+03, RESIDUAL :  0.69206E-15
+
+***** Loading Step :     2/   10 *****
+  Iteration :   1
+         df : 0.10000E+00, dfact :  0.20000E+00,      arc :  0.00000E+00
+      rnorm : 0.69239E+01, fnorm :  0.23263E+03, RESIDUAL :  0.29764E-01
+  Iteration :   2
+         df : 0.10000E+00, dfact :  0.20000E+00,      arc :  0.00000E+00
+      rnorm : 0.52872E-01, fnorm :  0.22690E+03, RESIDUAL :  0.23302E-03
+  Iteration :   3
+         df : 0.10000E+00, dfact :  0.20000E+00,      arc :  0.00000E+00
+      rnorm : 0.64040E-05, fnorm :  0.22688E+03, RESIDUAL :  0.28226E-07
+  Iteration :   4
+         df : 0.10000E+00, dfact :  0.20000E+00,      arc :  0.00000E+00
+      rnorm : 0.15377E-12, fnorm :  0.22688E+03, RESIDUAL :  0.67773E-15
+
+***** Loading Step :     3/   10 *****
+  Iteration :   1
+         df : 0.10000E+00, dfact :  0.30000E+00,      arc :  0.00000E+00
+      rnorm : 0.14749E+02, fnorm :  0.25740E+03, RESIDUAL :  0.57300E-01
+  Iteration :   2
+         df : 0.10000E+00, dfact :  0.30000E+00,      arc :  0.00000E+00
+      rnorm : 0.17301E+00, fnorm :  0.25143E+03, RESIDUAL :  0.68811E-03
+  Iteration :   3
+         df : 0.10000E+00, dfact :  0.30000E+00,      arc :  0.00000E+00
+      rnorm : 0.30685E-04, fnorm :  0.25139E+03, RESIDUAL :  0.12206E-06
+  Iteration :   4
+         df : 0.10000E+00, dfact :  0.30000E+00,      arc :  0.00000E+00
+      rnorm : 0.14861E-11, fnorm :  0.25139E+03, RESIDUAL :  0.59113E-14
+
+***** Loading Step :     4/   10 *****
+  Iteration :   1
+         df : 0.10000E+00, dfact :  0.40000E+00,      arc :  0.00000E+00
+      rnorm : 0.37483E+01, fnorm :  0.26689E+03, RESIDUAL :  0.14044E-01
+  Iteration :   2
+         df : 0.10000E+00, dfact :  0.40000E+00,      arc :  0.00000E+00
+      rnorm : 0.15278E-01, fnorm :  0.26548E+03, RESIDUAL :  0.57549E-04
+  Iteration :   3
+         df : 0.10000E+00, dfact :  0.40000E+00,      arc :  0.00000E+00
+      rnorm : 0.35267E-06, fnorm :  0.26547E+03, RESIDUAL :  0.13285E-08
+  Iteration :   4
+         df : 0.10000E+00, dfact :  0.40000E+00,      arc :  0.00000E+00
+      rnorm : 0.75387E-13, fnorm :  0.26547E+03, RESIDUAL :  0.28397E-15
+
+***** Loading Step :     5/   10 *****
+  Iteration :   1
+         df : 0.10000E+00, dfact :  0.50000E+00,      arc :  0.00000E+00
+      rnorm : 0.11001E+01, fnorm :  0.27987E+03, RESIDUAL :  0.39307E-02
+  Iteration :   2
+         df : 0.10000E+00, dfact :  0.50000E+00,      arc :  0.00000E+00
+      rnorm : 0.10135E-02, fnorm :  0.27856E+03, RESIDUAL :  0.36384E-05
+  Iteration :   3
+         df : 0.10000E+00, dfact :  0.50000E+00,      arc :  0.00000E+00
+      rnorm : 0.14041E-08, fnorm :  0.27856E+03, RESIDUAL :  0.50406E-11
+
+***** Loading Step :     6/   10 *****
+  Iteration :   1
+         df : 0.10000E+00, dfact :  0.60000E+00,      arc :  0.00000E+00
+      rnorm : 0.10681E+01, fnorm :  0.29265E+03, RESIDUAL :  0.36496E-02
+  Iteration :   2
+         df : 0.10000E+00, dfact :  0.60000E+00,      arc :  0.00000E+00
+      rnorm : 0.10094E-02, fnorm :  0.29136E+03, RESIDUAL :  0.34645E-05
+  Iteration :   3
+         df : 0.10000E+00, dfact :  0.60000E+00,      arc :  0.00000E+00
+      rnorm : 0.14581E-08, fnorm :  0.29136E+03, RESIDUAL :  0.50045E-11
+
+***** Loading Step :     7/   10 *****
+  Iteration :   1
+         df : 0.10000E+00, dfact :  0.70000E+00,      arc :  0.00000E+00
+      rnorm : 0.10848E+01, fnorm :  0.30525E+03, RESIDUAL :  0.35537E-02
+  Iteration :   2
+         df : 0.10000E+00, dfact :  0.70000E+00,      arc :  0.00000E+00
+      rnorm : 0.10888E-02, fnorm :  0.30394E+03, RESIDUAL :  0.35824E-05
+  Iteration :   3
+         df : 0.10000E+00, dfact :  0.70000E+00,      arc :  0.00000E+00
+      rnorm : 0.17202E-08, fnorm :  0.30394E+03, RESIDUAL :  0.56596E-11
+
+***** Loading Step :     8/   10 *****
+  Iteration :   1
+         df : 0.10000E+00, dfact :  0.80000E+00,      arc :  0.00000E+00
+      rnorm : 0.11006E+01, fnorm :  0.31769E+03, RESIDUAL :  0.34644E-02
+  Iteration :   2
+         df : 0.10000E+00, dfact :  0.80000E+00,      arc :  0.00000E+00
+      rnorm : 0.11479E-02, fnorm :  0.31635E+03, RESIDUAL :  0.36285E-05
+  Iteration :   3
+         df : 0.10000E+00, dfact :  0.80000E+00,      arc :  0.00000E+00
+      rnorm : 0.19072E-08, fnorm :  0.31635E+03, RESIDUAL :  0.60288E-11
+
+***** Loading Step :     9/   10 *****
+  Iteration :   1
+         df : 0.10000E+00, dfact :  0.90000E+00,      arc :  0.00000E+00
+      rnorm : 0.11139E+01, fnorm :  0.33000E+03, RESIDUAL :  0.33755E-02
+  Iteration :   2
+         df : 0.10000E+00, dfact :  0.90000E+00,      arc :  0.00000E+00
+      rnorm : 0.11893E-02, fnorm :  0.32865E+03, RESIDUAL :  0.36186E-05
+  Iteration :   3
+         df : 0.10000E+00, dfact :  0.90000E+00,      arc :  0.00000E+00
+      rnorm : 0.20225E-08, fnorm :  0.32865E+03, RESIDUAL :  0.61539E-11
+
+***** Loading Step :    10/   10 *****
+  Iteration :   1
+         df : 0.10000E+00, dfact :  0.10000E+01,      arc :  0.00000E+00
+      rnorm : 0.11250E+01, fnorm :  0.34225E+03, RESIDUAL :  0.32869E-02
+  Iteration :   2
+         df : 0.10000E+00, dfact :  0.10000E+01,      arc :  0.00000E+00
+      rnorm : 0.12183E-02, fnorm :  0.34089E+03, RESIDUAL :  0.35738E-05
+  Iteration :   3
+         df : 0.10000E+00, dfact :  0.10000E+01,      arc :  0.00000E+00
+      rnorm : 0.20848E-08, fnorm :  0.34089E+03, RESIDUAL :  0.61159E-11
+
+     The Computation Time:  0.9271960E+00 sec
+     (for solving linear equation  0.1482197-322 sec
+
+

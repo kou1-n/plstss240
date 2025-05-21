@@ -1,2 +1,33 @@
 # plstss240
-editted program of Fortran for Drucker-prager with complex hardning basd on Plastss programs
+
+Edited Fortran program implementing the Drucker--Prager plasticity model with complex hardening, based on the PLSTss program family.
+
+## Overview
+
+This project contains a finite element analysis solver written in Fortran. It solves elasto-plastic problems using the Drucker--Prager constitutive model with advanced hardening options. The code is derived from earlier PLSTss releases and is intended for research purposes.
+
+## Build requirements
+
+* **Intel Fortran Compiler** (`ifort`)
+* **Intel Math Kernel Library (MKL)** – set the `MKLROOT` environment variable to your installation path
+
+## Building
+
+The repository provides a Makefile configured for the Intel compiler toolchain. Simply run:
+
+```bash
+make
+```
+
+This compiles the source files and links against MKL, producing the executable defined by the `TARGET` variable in the Makefile (by default `$(HOME)/bin/plstss2393_nagasaku`). Use `make clean` to remove the built objects and executable.
+
+## Running
+
+After compilation, execute the produced binary. The program runs interactively and prompts for the base name of an input dataset in CML format. For example:
+
+```bash
+$ $(HOME)/bin/plstss2393_nagasaku
+*) Enter the input file name without extension:  test
+```
+
+The solver reads `test.cml` and writes several result files such as `RES_test.cml` and `STS_test.txt` in the working directory.

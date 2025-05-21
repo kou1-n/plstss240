@@ -1,0 +1,373 @@
+1c1
+<       subroutine stress(itrmax, idepg,
+---
+>       subroutine st_gtn(itrmax, idepg,
+12c12
+<       dimension str(3,3),stry(3,3),seta(3,3),
+---
+>       dimension str(3,3),stry(3,3),etri(3,3),
+14,16c14,21
+<      &          plstrg(3,3),betaeg(3,3)
+<       dimension ctens(3,3,3,3)
+<       dimension ehist(20)
+---
+>      &          plstrg(3,3),edev(3,3)
+>       dimension ctens(3,3,3,3),DEV(3,3,3,3)
+>       dimension ehist(20),r(3),d(4),test(3,3)
+> c   for subroutine
+>       integer n,m,NP,MP
+>       PARAMETER(MP=20,NP=20)
+>       REAL a(NP,NP),b(NP,MP),ai(NP,NP),c(NP,NP),x(NP,MP)
+>       REAL hyds,kkk,dmg,kkked,dmged,aaa,omega,bbb,ccc,ddd,eqst
+18a24,35
+> 
+>       do ll=1,3
+>         do kk=1,3
+>           do jj=1,3
+>             do ii=1,3
+>               DEV(ii,jj,kk,ll)
+>      &           =FIT(ii,jj,kk,ll)-(1.d0/3.d0)*
+>      &             DELTA(ii,jj)*DELTA(kk,ll)
+>             enddo
+>           enddo
+>         enddo
+>       enddo
+31,36c48,50
+<       do ii=1,3
+<         do jj=1,3
+<           kk = kk+1
+<           betaeg(jj,ii) = ehist(kk)
+<         enddo
+<       enddo
+---
+>       dmg = ehist(19)
+>       kkk = ehist(20)
+> c      print '("ehist dmg=",e15.5)',dmg
+57,61c71
+< c
+< c    --- thermal parameters
+<       row = prope(3)
+<       ccc = prope(4)
+<       aaa = prope(5)
+---
+>       fracI = prope(7)
+64a75
+>       ftreg = 0.d0
+65a77,81
+>       dmg   = dmg + fracI
+>       dmged = dmg
+>       kkked = kkk
+> c      print '("fracI=",e15.5)',fracI
+> c      print '("Initial dmg=",e15.5)',dmg
+68c84,91
+<       emean = (str(1,1) +str(2,2) +str(3,3))/3.d0
+---
+>       etri = str - plstrg
+> c      print '("str(1,1)=",e15.5)',str(1,1) 
+> c      print '("etri(1,1)=",e15.5)',etri(1,1) 
+>       emean = (etri(1,1) +etri(2,2) +etri(3,3))/3.d0
+> c      print '("emean=",e15.5)',emean
+>       stry = 2.d0*vmu*(etri-emean*DELTA)
+>       edev = etri-emean*DELTA
+> c      print '("edev(1,1)=",e15.5)',edev(1,1)
+70,73c93,100
+<       stry = 2.d0*vmu*(str -emean*DELTA -plstrg)
+<       !stry(:,:) = 2.d0*vmu*(str(:,:) -emean*DELTA(:,:) -plstrg(:,:))
+<       seta = stry -betaeg
+<       !seta(:,:) = stry(:,:) -betaeg(:,:)
+---
+>       edevno = 0.d0
+>       do jj=1,3
+>         do ii=1,3
+>           edevno = edevno +edev(ii,jj)**2
+>         enddo
+>       enddo
+>       edevno = dsqrt(edevno)
+> c      print '("edevno=",e15.5)',edevno
+75c102,107
+<       stno = 0.d0
+---
+>       etrace = etri(1,1) +etri(2,2) +etri(3,3)
+>       hyds = vkp*etrace
+> c      print '("hyds=",e15.5)',hyds
+>       oun  = edev/edevno
+> c
+>       eqst = 0.d0
+78c110
+<           stno = stno +seta(ii,jj)**2
+---
+>           eqst = eqst + stry(ii,jj)**2
+81c113,114
+<       stno = dsqrt(stno)
+---
+>       eqst = dsqrt(1.5d0*eqst)
+> c      print '("eqst",e15.5)',eqst
+84,85c117,123
+<       hard = hpd* hk*alpeg
+<      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg))
+---
+>       hard = yld + hk*kkk
+>      &     +(hpa -yld) *(1.d0 -dexp(-hpb*kkk))
+> c      print '("Initial hard",e15.5)',hard
+>      
+>       omega = 1.5d0*hyds/hard
+>       aaa   = dsqrt(1+dmg**2-2.d0*dmg*cosh(omega))
+> c      print '("aaa=",e15.5)',aaa
+87c125,126
+<       ftreg = stno -dsqrt(2.d0/3.d0)*(yld +hard)
+---
+>       ftreg = eqst-aaa*hard
+>       print '("Trial ftreg=",e15.5)',ftreg 
+94c133,134
+< c     --- initilization ( Box 3.1. step 1 )
+---
+>         print *,"PLASTIC"
+> c     --- initilization ( Box 3.1. step 1 ) 
+96c136,142
+<         alptmp = alpeg
+---
+>         b(1,1) = -ftreg
+>         b(2,1) = 0.d0
+>         b(3,1) = 0.d0
+>         b(4,1) = 0.d0
+>         
+>         dhard  = hk + (hpa -yld) *hpb*dexp(-hpb*kkk)
+>         ddhard = -(hpa -yld) *hpb**2*dexp(-hpb*kkk)
+99d144
+< c                       ( Box 3.1. step 2 )
+101,121c146,168
+<           alpd = alptmp -alpeg
+< c
+< c         --- K(\alpha^{(n)}_{n+1}) -\sigma_Y
+<           hrdtmp = hpd*hk*alptmp
+<      &            +(hpa -yld)*(1.d0 -dexp(-hpb*alptmp))
+< c         --- K'(\alpha^{(n)}_{n+1})
+<           dhdtmp = hpd*hk
+<      &            +hpb*(hpa -yld)*dexp(-hpb*alptmp)
+< c
+< c         --- H(\alpha^{(n)}_{n+1}) -H(\alpha_{n})
+<           tmpkrd = (1.d0 -hpd)* hk*alpd
+< c
+< c         --- H'(\alpha^{(n)}_{n+1}) -H(\alpha_{n})
+<           dkdtmp = (1.d0 -hpd)* hk
+< c
+<           gg = -dsqrt(2.d0/3.d0)*(yld +hrdtmp +tmpkrd)
+<      &         +stno -2.d0*vmu*deltag
+<           Dg = -2.d0*vmu -(2.d0/3.d0)*(dhdtmp+dkdtmp)
+< c
+<           deltag = deltag -gg/Dg
+<           alptmp = alpeg +dsqrt(2.d0/3.d0)*deltag
+---
+>           a=0.d0
+>           x=0.d0
+>           ai=0.d0
+>           c=0.d0
+>           d=0.d0
+>           n=4
+>           m=1
+>           omega  = 1.5d0*hyds/hard
+>           aaa    = dsqrt(1.d0+dmg**2-2.d0*dmg*cosh(omega))
+> c          
+>           a(1,1) = -3.d0*vmu
+>           a(1,2) = (3.d0*dmg*sinh(omega))/(2.d0*aaa)
+>           a(1,3) = -hard/aaa*(dmg-cosh(omega))
+>           a(1,4) = -(aaa+omega/aaa*dmg*sinh(omega))*dhard
+> c
+>           a(2,1) = dmg/(2.d0*aaa)*sinh(omega)
+>           a(2,2) = 1.d0 + 3.d0*dmg*deltag/(4.d0*aaa*hard)*(cosh(omega)
+>      &          +(dmg/aaa*sinh(omega))**2)
+>           a(2,3) = deltag/(2.d0*aaa)*(1.d0-dmg/aaa**2*
+>      &          (cosh(omega)-dmg))*sinh(omega)
+>           a(2,4) = -0.75d0*deltag*hyds*dmg/(aaa*hard**2)*dhard*
+>      &          ((dmg/aaa*sinh(omega))**2+cosh(omega))
+> 
+122a170,279
+>           a(3,1) = -1.5d0*(dmg-dmg**2)/aaa*sinh(omega)
+>           a(3,2) = -2.25d0*deltag*(dmg-dmg**2)/(aaa*hard)*
+>      &          (dmg*(sinh(omega)/aaa)**2+cosh(omega))
+>           a(3,3) = 1.d0+1.5d0*deltag/aaa*((dmg-dmg**2)*
+>      &          (dmg-cosh(omega))/aaa**2-(1.d0-2.d0*dmg)*sinh(omega))
+>           a(3,4) = 2.25d0*deltag*(dmg-dmg*2)*hyds/(aaa*hard**2)*
+>      &          dhard*(cosh(omega)+dmg*(sinh(omega)/aaa)**2)
+> c
+>           a(4,1) = -dhard*(1.5d0*hyds*dmg/(aaa*hard)*sinh(omega)-aaa)
+>           a(4,2) = -deltag*dhard*3.d0*dmg/(aaa*hard)*(0.5d0*dmg*
+>      &          omega*cosh(omega)+sinh(omega)+0.5d0*dmg*omega*
+>      &          (sinh(omega/aaa))**2)
+>           a(4,3) = -deltag*dhard*(omega/aaa*(1-dmg/aaa**2*
+>      &          (dmg-cosh(omega)))*sinh(omega)-1.d0/aaa*
+>      &          (dmg-cosh(omega)))
+>           a(4,4) = 1.d0+deltag*(omega*dmg/(aaa*hard)*dhard**2*
+>      &          sinh(omega)-(omega*dmg/aaa*sinh(omega)-aaa)*
+>      &          ddhard)
+> c          print '("a(1,1)=",e15.5)',a(1,1) 
+> c          print '("a(1,2)=",e15.5)',a(1,2) 
+> c          print '("a(1,3)=",e15.5)',a(1,3) 
+> c          print '("a(1,4)=",e15.5)',a(1,4) 
+> c          print '("a(2,1)=",e15.5)',a(2,1) 
+> c          print '("a(2,2)=",e15.5)',a(2,2) 
+> c          print '("a(2,3)=",e15.5)',a(2,3) 
+> c          print '("a(2,4)=",e15.5)',a(2,4) 
+> c          print '("a(3,1)=",e15.5)',a(3,1) 
+> c          print '("a(3,2)=",e15.5)',a(3,2) 
+> c          print '("a(3,3)=",e15.5)',a(3,3) 
+> c          print '("a(3,4)=",e15.5)',a(3,4) 
+> c          print '("a(4,1)=",e15.5)',a(4,1) 
+> c          print '("a(4,2)=",e15.5)',a(4,2) 
+> c          print '("a(4,3)=",e15.5)',a(4,3) 
+> c          print '("a(4,4)=",e15.5)',a(4,4) 
+> c          
+>           do 203 l=1,n
+>             do 201 k=1,n
+>               ai(k,l)=a(k,l)
+>   201       continue
+>             do 202 k=1,m
+>               x(l,k)=b(l,k)
+>   202       continue
+>   203     continue
+> c     --- Use Subroutine "gaussj"          
+>           call gaussj(ai,n,NP,x,m,MP)
+> c         
+> c          print '("ai(1,1)=",e15.5)',ai(1,1) 
+> c          print '("ai(1,2)=",e15.5)',ai(1,2) 
+> c          print '("ai(1,3)=",e15.5)',ai(1,3) 
+> c          print '("ai(1,4)=",e15.5)',ai(1,4) 
+> c          print '("ai(2,1)=",e15.5)',ai(2,1) 
+> c          print '("ai(2,2)=",e15.5)',ai(2,2) 
+> c          print '("ai(2,3)=",e15.5)',ai(2,3) 
+> c          print '("ai(2,4)=",e15.5)',ai(2,4) 
+> c          print '("ai(3,1)=",e15.5)',ai(3,1) 
+> c          print '("ai(3,2)=",e15.5)',ai(3,2) 
+> c          print '("ai(3,3)=",e15.5)',ai(3,3) 
+> c          print '("ai(3,4)=",e15.5)',ai(3,4) 
+> c          print '("ai(4,1)=",e15.5)',ai(4,1) 
+> c          print '("ai(4,2)=",e15.5)',ai(4,2) 
+> c          print '("ai(4,3)=",e15.5)',ai(4,3) 
+> c          print '("ai(4,4)=",e15.5)',ai(4,4) 
+> c
+> c     --- Update variables
+>           c = matmul(ai,b)
+> c          print '("c(1,1)=",e15.5)',-c(1,1)
+> c          print '("c(2,1)=",e15.5)',c(2,1)
+> c          print '("c(3,1)=",e15.5)',-c(3,1)
+> c          print '("c(4,1)=",e15.5)',c(4,1) 
+> c      
+> c          d(1)=ai(1,1)*b(1,1)+ai(1,2)*b(2,1)
+> c     &      +ai(1,3)*b(3,1)+ai(1,4)*b(4,1)
+> c          d(2)=ai(2,1)*b(1,1)+ai(2,2)*b(2,1)
+> c     &      +ai(2,3)*b(3,1)+ai(2,4)*b(4,1)
+> c          d(3)=ai(3,1)*b(1,1)+ai(3,2)*b(2,1)
+> c     &      +ai(3,3)*b(3,1)+ai(3,4)*b(4,1)
+> c          d(4)=ai(4,1)*b(1,1)+ai(4,2)*b(2,1)
+> c     &      +ai(4,3)*b(3,1)+ai(4,4)*b(4,1)
+> c          print '("d(1)=",e15.5)',d(1)
+> c          print '("d(2)=",e15.5)',d(2)
+> c          print '("d(3)=",e15.5)',d(3)
+> c          print '("d(4)=",e15.5)',d(4)
+>           deltag  = deltag - c(1,1)
+>           hyds    = hyds   + c(2,1)
+>           dmg     = dmg    - c(3,1)
+> c          print '("Update dmg=",e15.5)',dmg
+>           kkk     = kkk    + c(4,1)
+> c          print '("Update deltag=",e15.5)',deltag
+> c
+>           hard    = yld + hk*kkk
+>      &             +(hpa -yld) *(1.d0 -dexp(-hpb*kkk))
+> c          print '("Update hard",e15.5)',hard
+>           omega   = 1.5d0*hyds/hard
+>           aaa   = dsqrt(1+dmg**2-2.d0*dmg*cosh(omega))
+> 
+>           ftreg = (eqst-3.d0*vmu*deltag)-aaa*hard
+>           print '("Update ftreg",e15.5)',ftreg
+>           r(1) = hyds-vkp*emean+deltag/aaa*dmg*sinh(omega)
+>           r(2) = dmg - dmged -deltag*(dmg-dmg**2)*
+>      &             1.5d0/aaa*sinh(omega)
+>           r(3) = kkk - kkked -deltag*(omega/aaa* 
+>      &             dmg*sinh(omega)-aaa)*dhard 
+> 
+>           b(1,1) = -ftreg
+>           b(2,1) = -r(1)
+>           b(3,1) = -r(2)
+>           b(4,1) = -r(3)
+> c          print '("r(1)=",e15.5)',r(1)
+> c          print '("r(2)=",e15.5)',r(2)
+> c          print '("r(3)=",e15.5)',r(3) 
+124c281
+<           if( dabs(gg/Dg).lt.ctol) then
+---
+>           if( ftreg.lt.ctol) then
+135,140d291
+<         alptmp = alpeg
+<         alpeg = alpeg +dsqrt(2.d0/3.d0)*deltag
+< c
+< c     --- outward unit normal vector in stress space
+<         oun(:,:) = seta(:,:)/stno
+< c
+142c293,296
+<         alpd = alpeg -alptmp
+---
+>         omega  = 1.5d0*hyds/hard
+>         aaa    = dsqrt(1+dmg**2-2.d0*dmg*cosh(omega))
+>         alpeg = alpeg +dsqrt(2.d0/3.d0)*deltag
+> c        print '("final hyds=",e15.5)',hyds
+144c298,299
+<         tmpkrd = (1.d0 -hpd)* hk*alpd
+---
+>         plstrg(:,:) = plstrg(:,:) +deltag*(dsqrt(1.5d0)/edevno*
+>      &               edev(:,:)+1.5d0/aaa*dmg*sinh(omega)*DELTA(:,:))
+146,150c301,305
+< c
+<         betaeg(:,:) = betaeg(:,:) +dsqrt(2.d0/3.d0)*tmpkrd*oun(:,:)
+<         plstrg(:,:) = plstrg(:,:) +deltag*oun(:,:)
+<         sig(:,:) = stry(:,:) -2.d0*vmu*deltag*oun(:,:)
+<      &                                 +vkp*etrs*DELTA(:,:)
+---
+>         sig(:,:) = stry(:,:) -6.d0*vmu**2*deltag*edev(:,:)
+>      &                                 /eqst+vkp*etrs*DELTA(:,:)
+> c        print '("sig(1,1)=",e15.5)',sig(1,1) 
+> c        print '("plstrg(1,1)=",e15.5)',plstrg(1,1) 
+>      
+153,155c308,311
+<         dhard = hpd* hk +hpb*(hpa -yld)*dexp(-hpb*alpeg)
+<         dkard = (1.d0 -hpd)* hk
+< c    &        +(hpa -yld)*(1.d0 -dexp(-hpb*alpha  ))
+---
+>         bbb = 2.d0*vmu*(1.d0 -3.d0*vmu*deltag/eqst)
+>         ccc = 12.d0*vmu**3*deltag/(eqst**2*edevno)
+>         ddd = dsqrt(6.d0)/edevno*(1.d0-3.d0*vmu*deltag/eqst)
+>         eee = dsqrt(1.5d0)*12.d0*vmu**3*deltag/eqst**2
+157,159d312
+<         theta = 1.d0 -(2.d0*vmu*deltag)/stno
+<         thetab= 1.d0/(1.d0 +(dhard+dkard)/(3.d0*vmu)) -(1.d0 -theta)
+< c
+165,168c318,324
+<      &            = vkp*DELTA(ii,jj)*DELTA(kk,ll)
+<      &              +2.d0*vmu*theta*( FIT(ii,jj,kk,ll)
+<      &                       -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
+<      &              -2.d0*vmu*thetab*oun(ii,jj)*oun(kk,ll)
+---
+>      &            = bbb*DEV(ii,jj,kk,ll)
+>      &              +ccc*edev(ii,jj)*edev(kk,ll)     
+>      &              -6.d0*vmu**2/eqst*edev(ii,jj)*
+>      &              (-ai(1,1)*(ddd+eee)*edev(kk,ll)
+>      &              +ai(1,2)*vkp*DELTA(kk,ll))
+>      &              +DELTA(ii,jj)*(-ai(2,1)*(ddd+eee)*edev(kk,ll)
+>      &              +ai(2,2)*vkp*DELTA(kk,ll))
+173d328
+< c
+177a333
+>         print *,"ELASTIC"
+204a361
+> c      print '("smean=",e15.5)',smean
+248,253c405,408
+<       do ii=1,3
+<         do jj=1,3
+<           kk = kk+1
+<           ehist(kk) = betaeg(jj,ii)
+<         enddo
+<       enddo
+---
+> c      print '("final dmg=",e15.5)',dmg
+> c      print '("KAKUNOU dmg=",e15.5)',dmg - fracI
+>       ehist(19) = dmg - fracI
+>       ehist(20) = kkk

@@ -31,3 +31,9 @@ $ $(HOME)/bin/plstss2393_nagasaku
 ```
 
 The solver reads `test.cml` and writes several result files such as `RES_test.cml` and `STS_test.txt` in the working directory.
+
+## Source files
+
+A detailed description of the Fortran source code can be found in
+[`docs/FORTRAN_FILES.md`](docs/FORTRAN_FILES.md).  It lists the main subroutines
+and typical variables used throughout the program.

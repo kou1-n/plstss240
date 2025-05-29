@@ -38,3 +38,9 @@ PARDISO is selected as the linear solver. The skyline-based solver uses
 `mapsky.f` instead. The solver choice is controlled in the `solut` input block
 and reflected by variable `isolvr` in the code.
 
+## 詳細: hexa8a.f と phexa8.f
+
+`hexa8a.f` は 8 節点ヘキサ要素の剛性マトリクスを計算するサブルーチンです。形状関数の空間微分 `dndx_g` と接線剛性テンソル `ctensg` を用いて、数値積分により要素剛性 `ske` を構築します。積分点ごとにヤコビアンの行列式 `det` と積分重みを掛け合わせ、
+\(B^T C B\) を体積要素に対して加算していきます。
+
+`phexa8.f` は同じく 8 節点ヘキサ要素の内部力計算を行うサブルーチンで、弾塑性構成則に基づく応力更新と履歴変数の更新を行います。積分点ループ内でひずみテンソルを求め、履歴変数 `ehist` を参照しながら `stress` (または `st_gtn`) を呼び出して応力と接線剛性を計算します。得られた応力から内部力ベクトル `finte` を形成し、要素平均の応力やエネルギー量も集計します。

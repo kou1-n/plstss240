@@ -38,6 +38,25 @@ A detailed description of the Fortran source code can be found in
 [`docs/FORTRAN_FILES.md`](docs/FORTRAN_FILES.md).  It lists the main subroutines
 and typical variables used throughout the program.
 
+## Tensor representation
+
+The program performs all constitutive calculations using `3×3` matrix forms for
+stress and strain tensors. When results are saved, each matrix is converted to a
+six-component array following Voigt notation. See
+[`docs/tensor_representation.md`](docs/tensor_representation.md) for the mapping
+used during output.
+
+## Additional documentation
+
+The `docs` directory contains several other references:
+
+- [`docs/AGENT.md`](docs/AGENT.md) — tips for reliably locating files with the
+  Codex agent.
+- [`docs/CMLformat07.md`](docs/CMLformat07.md) — detailed structure of the CML
+  input and output format.
+- [`docs/stress_variables.md`](docs/stress_variables.md) — variable list for
+  `stress.f`.
+
 ## Development Environment
 
 This repository has been successfully cloned and tested on the following systems:

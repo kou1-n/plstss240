@@ -52,7 +52,7 @@ OBJASMB  = forces.o assemb.o elastc.o plastc.o mapcrs.o mapsky.o
 OBJELM   = quad4a.o pquad4.o hexa8a.o phexa8.o tria3a.o ptria3.o pres2d.o pres3d.o triap1.o ptrip1.o tria6a.o ptria6.o quad8a.o pquad8.o
 #OBJBASE  = trans1.o trans2.o trans3.o trans4.o
 OBJSLV   = constr.o skylin.o
-OBJPOST  = update.o postpr.o output.o stored.o restor.o stress.o st_gtn.o
+OBJPOST  = update.o postpr.o output.o stored.o restor.o stress.o stress_vm.o st_gtn.o
 #
 #OBJRCM   = genrcm.o
 #

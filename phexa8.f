@@ -174,6 +174,12 @@ c            print'("--------------------------------ig=",2I5)',ig,MATYPE
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
      &                  ierror, itr, histi )
+          elseif(MATYPE.eq.3) then
+            CALL stress_vm(itrmax, idepg,
+     &                   prope,   sig,   str, ehist,
+     &                    ctol,  vons, e_dns, p_dns,
+     &                   ctens,
+     &                  ierror, itr, histi )
           else
             STOP 'Something wrong in phexa8'
           endif

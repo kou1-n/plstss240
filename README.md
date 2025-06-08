@@ -32,6 +32,16 @@ $ $(HOME)/bin/plstss2393_nagasaku
 
 The solver reads `test.cml` and writes several result files such as `RES_test.cml` and `STS_test.txt` in the working directory.
 
+## Repository layout
+
+To keep the different source types organized, the repository is structured as
+follows:
+
+- `scripts/` – Python utilities for post‑processing and visualisation
+- `data/` – example input and output files (`.cml`, `.NEU`, `.txt`, etc.)
+- Fortran source files remain in the project root so that the existing
+  `Makefile` continues to work without modification.
+
 ## Source files
 
 A detailed description of the Fortran source code can be found in

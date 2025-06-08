@@ -9,6 +9,12 @@ Nov 28, 2005. Kazumi Matsui
 > finite element analysis in our research group. All of the FORTAN
 > programs for the FE analysis need to use this format for our
 > conveniences.
+
+> The relation between the CML format and the variables used in the
+> stress update routine is documented in
+> [stress_variables.md](stress_variables.md). Consult that file for
+> details on the meanings of each variable name used in conjunction with
+> this format.
 >
 > We can separate this format into the 3 kinds of data statements,
 > INPUT, OUTPUT and OPTIONAL. The INPUT file contains some properties of

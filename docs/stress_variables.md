@@ -164,18 +164,29 @@ Drunker–Prager 模型の応力更新ルーチンです。インターフェー
 通りです。
 
 ```fortran
-subroutine stress_dp(str, sig, ctens, ehist, ierror)
+subroutine stress_dp(itrmax, idepg, prope, sig, str, ehist, &
+                     ctol, vons, e_dns, p_dns, ctens, ierror)
 ```
+
+このプロトタイプは `stress_dp.f` の実装と自動的に照合され、
+コミットごとに一致が確認されます。
 
 ### 引数
 
 | 変数名 | 型 | 次元 | 説明 |
 |--------|---|------|------|
-| `str`  | real*8 | (3,3) | 全ひずみテンソル |
-| `sig`  | real*8 | (3,3) | 応力テンソル（出力） |
-| `ctens`| real*8 | (3,3,3,3) | 接線剛性テンソル（出力） |
-| `ehist`| real*8 | (19) | 履歴変数配列 (入力/出力) |
-| `ierror`| integer | スカラー | エラーフラグ |
+| `itrmax` | integer | スカラー | Newton 反復の最大回数 (in) |
+| `idepg`  | integer | スカラー | 塑性フラグ 0:弾性,1:塑性 (in/out) |
+| `prope`  | real*8 | (20) | 材料定数配列 (in) |
+| `sig`    | real*8 | (3,3) | 応力テンソル (in/out) |
+| `str`    | real*8 | (3,3) | 全ひずみテンソル (in) |
+| `ehist`  | real*8 | (20) | 履歴変数配列 (in/out) |
+| `ctol`   | real*8 | スカラー | 収束許容誤差 (in) |
+| `vons`   | real*8 | スカラー | von Mises 応力 (out) |
+| `e_dns`  | real*8 | スカラー | 弾性エネルギー密度 (out) |
+| `p_dns`  | real*8 | スカラー | 塑性仕事密度 (out) |
+| `ctens`  | real*8 | (3,3,3,3) | 接線剛性テンソル (out) |
+| `ierror` | integer | スカラー | エラーフラグ (out) |
 
 ### 主な内部変数
 

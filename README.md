@@ -72,3 +72,7 @@ The `docs` directory contains several other references:
 This repository has been successfully cloned and tested on the following systems:
 - Original development environment
 - Akita University Laboratory PC (akita)
+
+## Remote repository
+
+This project's remote repository is hosted at [https://github.com/kou1-n/plstss240](https://github.com/kou1-n/plstss240).

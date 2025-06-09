@@ -102,13 +102,14 @@ This CML-formatted file was translated by "NEU2CML"
     1       1    3
 /PSTRN/
     3
-    1       1    1
-    1       1    2
-    1       1    3
+    8       1    1    # 要素8のεxx
+    8       1    2    # 要素8のεyy  
+    8       1    3    # 要素8のεzz
+
 /PSTRS/
     3
-    1       1    1
-    1       1    2
-    1       1    3
+    8       1    1    # 要素8のσxx
+    8       1    2    # 要素8のσyy
+    8       1    3    # 要素8のσzz
 /LASTD/
 /ENDOF/

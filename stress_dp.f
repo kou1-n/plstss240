@@ -29,6 +29,9 @@ c *                                                                   *
 c **********************************************************************
       implicit none
 
+c     External hardening functions
+      external H_iso, dH_iso_dk, H_kin, dH_kin_dk
+
       include 'param_dp.inc'
 c
 c ====================== Local Variables ===============================
@@ -146,13 +149,11 @@ c --- Newton-Raphson iteration for two unknowns
           alpd = alptmp - alpeg
 c
 c --- Compute hardening terms
-          hrdtmp = hpd*hk*alptmp
-     &           + (hpa-yld)*(1.d0-dexp(-hpb*alptmp))
-          dhdtmp = hpd*hk
-     &           + hpb*(hpa-yld)*dexp(-hpb*alptmp)
+          hrdtmp = H_iso(alptmp, yld, hk, hpa, hpb) - yld
+          dhdtmp = dH_iso_dk(alptmp, yld, hk, hpa, hpb)
 c
-          tmpkrd = (1.d0-hpd)*hk*alpd
-          dkdtmp = (1.d0-hpd)*hk
+          tmpkrd = H_kin(alptmp, hk, hpd) - H_kin(alpeg, hk, hpd)
+          dkdtmp = dH_kin_dk(hk, hpd)
 c
 c --- Compute residuals
           R(1) = sig_eq 
@@ -222,8 +223,8 @@ c
         enddo
 c
 c --- Update constitutive tensor
-        dhard = hpd*hk + hpb*(hpa-yld)*dexp(-hpb*alpeg)
-        dkard = (1.d0-hpd)*hk
+        dhard = dH_iso_dk(alpeg, yld, hk, hpa, hpb)
+        dkard = dH_kin_dk(hk, hpd)
 c
         A = 1.d0/(vmu + vkp*etabar_dp*eta_dp 
      &          + xi_dp*xi_dp*(dhdtmp + dkdtmp))

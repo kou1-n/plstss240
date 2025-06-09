@@ -91,7 +91,8 @@ c --- Set material parameters from the prope array --------------------
       psi_dp = prope(17)
 
       eta_dp   =  sin(phi_dp) / ( sqrt(3.d0) * (3.d0 - sin(phi_dp)) )
-      xi_dp    = 6.d0 * cos(phi_dp) / ( sqrt(3.d0) * (3.d0 - sin(phi_dp)) )
+      xi_dp    = 6.d0 * cos(phi_dp) / ( sqrt(3.d0) *
+     &                                   (3.d0 - sin(phi_dp)) )
       etabar_dp = 6.d0 * sin(psi_dp) / ( sqrt(3.d0) *
      &                                   (3.d0 - sin(psi_dp)) )
 c

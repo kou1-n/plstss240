@@ -47,6 +47,10 @@ A detailed description of the Fortran source code can be found in
 [`docs/FORTRAN_FILES.md`](docs/FORTRAN_FILES.md).  It lists the main subroutines
 and typical variables used throughout the program.
 
+All `.f` files use fixed-form Fortran. Executable code should stay within the
+first 72 columns for portability, although comments may extend beyond that
+limit. Use continuation lines whenever your logic exceeds the allowed width.
+
 ## Tensor representation
 
 The program performs all constitutive calculations using `3×3` matrix forms for

@@ -31,6 +31,7 @@ c **********************************************************************
 
 c     External hardening functions
       external H_iso, dH_iso_dk, H_kin, dH_kin_dk
+      double precision H_iso, dH_iso_dk, H_kin, dH_kin_dk
 
 c     Material parameters are taken from the MATER block
 c     (Young modulus, Poisson ratio, etc.)
@@ -90,10 +91,10 @@ c --- Set material parameters from the prope array --------------------
       phi_dp = prope(16)
       psi_dp = prope(17)
 
-      eta_dp   =  sin(phi_dp) / ( sqrt(3.d0) * (3.d0 - sin(phi_dp)) )
-      xi_dp    = 6.d0 * cos(phi_dp) / ( sqrt(3.d0) *
+      eta_dp   =  sin(phi_dp) / ( dsqrt(3.d0) * (3.d0 - sin(phi_dp)) )
+      xi_dp    = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) *
      &                                   (3.d0 - sin(phi_dp)) )
-      etabar_dp = 6.d0 * sin(psi_dp) / ( sqrt(3.d0) *
+      etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
      &                                   (3.d0 - sin(psi_dp)) )
 c
 c --- Initialize strain/stress tensors

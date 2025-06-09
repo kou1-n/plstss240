@@ -8,6 +8,7 @@ c
       implicit double precision(a-h,o-z)
 c     External hardening functions
       external H_iso, dH_iso_dk, H_kin, dH_kin_dk
+      double precision H_iso, dH_iso_dk, H_kin, dH_kin_dk
 c
       dimension prope(20)
       dimension sts(3,3),stn(3,3) !使われていない
@@ -65,9 +66,9 @@ c     hpc = prope(14)
       phi_dp = prope(16) !FRICTION_ANGLE
       psi_dp = prope(17) !DILATANCY_ANGLE
 c Drucker-Prager の η, ξ, および 非関連の場合の η̄ の外側一致の式に合わせて再定義
-      eta_dp=  sin(phi_dp) / ( sqrt(3.d0) * (3.d0 - sin(phi_dp)) )
-      xi_dp = 6.d0 * cos(phi_dp) / ( sqrt(3.d0) * (3.d0 - sin(phi_dp)) )
-      etabar_dp = 6.d0 * sin(psi_dp) / ( sqrt(3.d0)  
+      eta_dp=  sin(phi_dp) / ( dsqrt(3.d0) * (3.d0 - sin(phi_dp)) )
+      xi_dp = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) * (3.d0 - sin(phi_dp)) )
+      etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0)  
      &                                          * (3.d0 - sin(psi_dp)) )
 
 
@@ -193,8 +194,8 @@ c    &        +(hpa -yld)*(1.d0 -dexp(-hpb*alpha  )) コメントアウトして
      &               + xi_dp*xi_dp*(dhdtmp + dkdtmp) )
 
 c            D(:,:) = seta(:,:) / stno
-        theta = 1.d0 -(sqrt(2.d0)*vmu*deltag)/stno
-        thetab= (sqrt(2.d0)*vmu*deltag)/stno -vmu*A
+        theta = 1.d0 -(dsqrt(2.d0)*vmu*deltag)/stno
+        thetab= (dsqrt(2.d0)*vmu*deltag)/stno -vmu*A
 c
         do ll=1,3
           do kk=1,3
@@ -206,8 +207,8 @@ c
      &              +2.d0*vmu*theta*( FIT(ii,jj,kk,ll)
      &                       -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
      &              +2.d0*vmu*thetab*oun(ii,jj)*oun(kk,ll)
-     &              -sqrt(2.d0)*vmu*A*vkp*
-     &                         ( eta_dp*oun(ii,jj)*DELTA(kk,ll) &
+     &              -dsqrt(2.d0)*vmu*A*vkp*
+     &                         ( eta_dp*oun(ii,jj)*DELTA(kk,ll)
      &                        + etabar_dp*DELTA(ii,jj)*oun(kk,ll) )
               enddo
             enddo

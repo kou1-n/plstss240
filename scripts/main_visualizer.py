@@ -6,6 +6,7 @@ import plot_nor
 import plot_sts
 import plot_tmp
 import pandas as pd
+import os
 
 def get_user_choice(prompt, options):
     """ユーザーに選択肢を提示し、選択を取得する関数"""
@@ -81,8 +82,12 @@ def main():
     case_prefix = case_prefix_input if case_prefix_input else "cube250514"
     print(f"解析ケース: '{case_prefix}'")
 
-    base_path = "./"
-    cml_file_path = f"{base_path}{case_prefix}.cml" # CMLファイルパス
+    # パス設定（スクリプトの場所から相対的に設定）
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # scripts/フォルダ
+    work_dir = os.path.dirname(script_dir)  # WORKディレクトリ
+    output_dir = os.path.join(work_dir, "output")  # WORK/outputディレクトリ
+    
+    cml_file_path = os.path.join(work_dir, f"{case_prefix}.cml")  # CMLファイルパス
 
     # --- 材料情報の読み込み ---
     material_info_text = data_loader.parse_cml_material_section(cml_file_path)
@@ -92,11 +97,11 @@ def main():
 
 
     file_paths = {
-        "DIS": f"{base_path}DIS_{case_prefix}.txt",
-        "ENE": f"{base_path}ENE_{case_prefix}.txt",
-        "NOR": f"{base_path}NOR_{case_prefix}.txt",
-        "STS": f"{base_path}STS_{case_prefix}.txt",
-        "TMP": f"{base_path}TMP_{case_prefix}.txt",
+        "DIS": os.path.join(output_dir, f"DIS_{case_prefix}.txt"),
+        "ENE": os.path.join(output_dir, f"ENE_{case_prefix}.txt"),
+        "NOR": os.path.join(output_dir, f"NOR_{case_prefix}.txt"),
+        "STS": os.path.join(output_dir, f"STS_{case_prefix}.txt"),
+        "TMP": os.path.join(output_dir, f"TMP_{case_prefix}.txt"),
     }
 
     print(f"\n--- {case_prefix} のデータファイルを読み込み中 ---")

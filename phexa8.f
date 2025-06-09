@@ -162,6 +162,7 @@ c         === Set Deformation Histtories ===
 c
 c         === Compute Local Stresses ===
 c            print'("--------------------------------ig=",2I5)',ig,MATYPE
+c            ! MATYPE=4 uses the new stress_dp routine
           if( MATYPE.eq.1) then
             CALL stress(itrmax, idepg,
      &                   prope,   sig,   str, ehist,
@@ -180,6 +181,12 @@ c            print'("--------------------------------ig=",2I5)',ig,MATYPE
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
      &                  ierror, itr, histi )
+          elseif(MATYPE.eq.4) then
+            CALL stress_dp(itrmax, idepg,
+     &                   prope,   sig,   str, ehist,
+     &                    ctol,  vons, e_dns, p_dns,
+     &                   ctens,
+     &                  ierror )
           else
             STOP 'Something wrong in phexa8'
           endif

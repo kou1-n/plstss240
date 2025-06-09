@@ -22,7 +22,11 @@ This compiles the source files and links against MKL, producing the executable d
 
 ## Running
 
-After compilation, execute the produced binary. The program runs interactively and prompts for the base name of an input dataset in CML format. For example:
+There are two ways to run the plstss program after compilation:
+
+### Interactive mode
+
+Execute the produced binary. The program runs interactively and prompts for the base name of an input dataset in CML format. For example:
 
 ```bash
 $ $(HOME)/bin/plstss2393_nagasaku
@@ -30,6 +34,32 @@ $ $(HOME)/bin/plstss2393_nagasaku
 ```
 
 The solver reads `test.cml` and writes several result files such as `RES_test.cml` and `STS_test.txt` in the working directory.
+
+### Non-interactive mode (batch processing)
+
+For automated processing or to redirect output to a file, you can use input/output redirection. First, create an input file (without extension) containing the dataset name:
+
+```bash
+# Create input file containing the dataset name
+$ echo "test" > inp
+```
+
+Then run the program with input/output redirection:
+
+```bash
+$ plstss2393_nagasaku < inp > out
+```
+
+Where:
+- `inp` is the input file containing the dataset name (without extension)
+- `out` is the output file where all program messages will be written
+- `plstss2393_nagasaku` should be replaced with your actual executable name
+
+This method is particularly useful for:
+- Batch processing multiple datasets
+- Running calculations in background
+- Capturing all program output for later analysis
+- Automated workflows and scripting
 
 ## Repository layout
 

@@ -3,13 +3,13 @@
      &                     ctol, vons, e_dns, p_dns,
      &                     ctens,
      &                     ierror)
-c **********************************************************************
-c *                                                                    *
-c *   STRESS Update Routine for Drucker-Prager Model                   *
+c *********************************************************************
+c *                                                                   *
+c *   STRESS Update Routine for Drucker-Prager Model                  *
 c *   with Combined Nonlinear Isotropic/Kinematic Hardening           *
-c *   Using Return-Mapping Algorithm with Two Unknowns                 *
-c *                                                                    *
-c *   Input Variables:                                                 *
+c *   Using Return-Mapping Algorithm with Two Unknowns                *
+c *                                                                   *
+c *   Input Variables:                                                *
 c *     itrmax    : max iterations (unused)                           *
 c *     idepg     : plastic flag (returned)                           *
 c *     prope(20) : material constants (unused)                       *

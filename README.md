@@ -63,6 +63,7 @@ The `docs` directory contains several other references:
   Codex agent.
 - [`docs/CMLformat07.md`](docs/CMLformat07.md) — detailed structure of the CML
   input and output format.
+
 - [`docs/stress_variables.md`](docs/stress_variables.md) — variable list for
   `stress.f`.
 - [`docs/plstss_flow_ja.md`](docs/plstss_flow_ja.md) — PLSTss の処理手順を日本語で説明したドキュメント。

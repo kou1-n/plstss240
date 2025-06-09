@@ -1,31 +1,50 @@
-# PLSTss 解析フロー
+# PLSTss ワークフロー概説
 
-PLSTss は塑性体解析を行う Fortran 製 FEM プログラムです。ここでは CML 入力の読み込みから結果書き出しまでの一連の処理を日本語で説明します。
+このドキュメントでは，PLSTss プログラムが入力ファイルを読み込んでから結果を書き出すまでの流れを日本語で解説します。各段階に関連する主要サブルーチンとデータ構造を併記し，数式を交えて説明します。
 
-## 主要ステージ
+## 1. 初期化 (Initialization)
 
-### 1. 初期化
-- `main.f` で配列を確保した後、`flopen` で各種ファイルを開き、`chkary` により作業領域の大きさを確認します。その後 `analys` を呼び出します【F:main.f†L170-L219】。
-- `analys.f` 冒頭では `redcml` を使用して CML ファイルを読み込みます【F:analys.f†L90-L101】。必要に応じて `rowupr` や `presky`、`inform` でインデックスを整備します【F:analys.f†L120-L151】。
+1. `main.f` から解析が開始され，`analys.f` が全体の制御を行います。
+2. `redcml.f` により CML 形式の入力ファイルが読み込まれます。ここで座標 `xyz`，要素接続 `conn`，材料定数 `prop` などの配列が初期化されます。【F:redcml.f†L1-L10】
+3. `initia.f` では解析パラメータと収束許容値が設定され，出力ファイルが開かれます。
 
-### 2. 組み立て
-- `initia` で要素の積分点情報などを準備し、ロードステップごとの Newton-Raphson 反復が開始されます【F:analys.f†L180-L205】。
-- 反復内では `assemb.f` が呼ばれ、要素剛性行列がグローバル行列 `sk` に組み込まれます【F:analys.f†L229-L238】。要素計算には `quad4a.f` や `hexa8a.f` などが利用されます【F:assemb.f†L22-L56】【F:assemb.f†L80-L117】。
+## 2. 組み立て (Assembly)
 
-### 3. 解法
-- `constr` で境界条件を強制変位に変換後、選択されたソルバー（`skylin`、`PARDISO`、`RCI CG`）で線形方程式を解きます【F:analys.f†L249-L322】。
-- `update` が解を再配置し、現在の変位量を更新します【F:update.f†L23-L34】。
+1. 各要素ルーチン (`phexa8.f`，`pquad4.f` など) が要素剛性行列 `K_e` と内部力ベクトル `f_e` を計算します。要素剛性は次の式に基づきます。
 
-### 4. ポスト処理
-- `postpr` で内部力や応力を算定し、履歴変数を更新します【F:analys.f†L349-L359】【F:postpr.f†L1-L30】。
-- 収束後は `stored` で履歴を保存し、`output` により `RES_*.cml` や `STS_*.txt` などの結果ファイルが生成されます【F:analys.f†L437-L457】【F:output.f†L192-L251】。
-- 解析が完了すると `pars99` でソルバーのメモリを解放し、最後に `main.f` が全ファイルを閉じて終了します【F:analys.f†L467-L473】【F:main.f†L221-L237】。
+\[
+K_e = \int_\Omega B^T\,C\,B\, d\Omega
+\]
 
-## データの流れ
+2. `assemb.f` は上式で得られた `K_e` を大域剛性行列 `K` に組み込みます。【F:assemb.f†L1-L10】
 
-1. 実行時に入力ベース名を指定すると `redcml.f` が `<name>.cml` を読み込み、節点座標や要素接続、材料定数を取り込みます。
-2. `solut.f` で `/SOLUT/` ブロックを作成しておくと、計算時に読み取られる荷重増分 `finc` などの値が定義されます【F:solut.f†L1-L20】。
-3. 計算終了後、`output.f` により `RES_<name>.cml`、`DIS_<name>.txt`、`STS_<name>.txt` などが実行ディレクトリに出力されます。
-4. `scripts/` 以下の Python ツールを使うと、これらの結果を可視化できます。
+## 3. 解法 (Solving)
 
-PLSTss の詳細なルーチンや変数については [`docs/FORTRAN_FILES.md`](FORTRAN_FILES.md) を参照してください。
+1. `solut.f` で求解器が選択され，以下の大域平衡方程式を解きます。
+
+\[
+K\,\Delta u = F_{\text{ext}} - F_{\text{int}}
+\]
+
+2. Newton–Raphson 反復では残差 \(R\) が \(\|R\| < \varepsilon\) となるまで更新を続けます。線形方程式の解法には Skyline，PARDISO，CG などが利用可能です。
+
+## 4. ポスト処理 (Post-processing)
+
+1. `postpr.f` が要素応力を計算し，`stress.f` や `stress_dp.f` を通じて Drucker–Prager 収束条件を確認します。降伏関数は次式で表されます。
+
+\[
+\sqrt{J_2} + \alpha I_1 - k = 0
+\]
+
+2. `output.f` により変位 `RES_*` と応力 `STS_*` のファイルが書き出されます。
+
+## 5. 一連の流れ
+
+1. `redcml` で CML ファイルを読み込む
+2. `constr` で境界条件を適用
+3. `assemb` で大域剛性行列を構築
+4. `solut` で平衡方程式を解く
+5. `update` で変位および履歴変数を更新
+6. `postpr` / `output` で結果ファイルを出力
+
+以上が PLSTss による解析の基本的な手順です。

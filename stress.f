@@ -207,7 +207,7 @@ c
      &                       -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
      &              +2.d0*vmu*thetab*oun(ii,jj)*oun(kk,ll)
      &              -sqrt(2.d0)*vmu*A*vkp*
-     &                         ( eta_dp*oun(ii,jj)*DELTA(kk,ll)           
+     &                         ( eta_dp*oun(ii,jj)*DELTA(kk,ll) &
      &                        + etabar_dp*DELTA(ii,jj)*oun(kk,ll) )
               enddo
             enddo

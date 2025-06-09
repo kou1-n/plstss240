@@ -127,7 +127,24 @@ c --- Initialize history variables
       enddo
 c
 c --- Initialize unit tensors
-      call unit_tensor(DELTA,FIT)
+      do j=1,3
+        do i=1,3
+          DELTA(i,j) = 0.d0
+        enddo
+      enddo
+      do i=1,3
+        DELTA(i,i) = 1.d0
+      enddo
+      do l=1,3
+        do k=1,3
+          do j=1,3
+            do i=1,3
+              FIT(i,j,k,l) = 0.5d0*( DELTA(i,k)*DELTA(j,l)
+     &                             +DELTA(i,l)*DELTA(j,k) )
+            enddo
+          enddo
+        enddo
+      enddo
 c
 c ================= Elastic Predictor Step ===========================
 c --- Compute trial stress

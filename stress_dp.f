@@ -1,4 +1,8 @@
-      SUBROUTINE stress_dp(str,sig,ctens,ehist,ierror)
+      SUBROUTINE stress_dp(itrmax, idepg,
+     &                     prope, sig, str, ehist,
+     &                     ctol, vons, e_dns, p_dns,
+     &                     ctens,
+     &                     ierror)
 c **********************************************************************
 c *                                                                    *
 c *   STRESS Update Routine for Drucker-Prager Model                   *
@@ -6,28 +10,37 @@ c *   with Combined Nonlinear Isotropic/Kinematic Hardening           *
 c *   Using Return-Mapping Algorithm with Two Unknowns                 *
 c *                                                                    *
 c *   Input Variables:                                                 *
+c *     itrmax    : max iterations (unused)                           *
+c *     idepg     : plastic flag (returned)                           *
+c *     prope(20) : material constants (unused)                       *
+c *     sig(3,3)  : stress tensor                                     *
 c *     str(3,3)  : strain tensor                                     *
-c *     ehist(19) : history variables                                 *
+c *     ehist(20) : history variables                                 *
+c *     ctol      : convergence tol. (unused)                         *
 c *                                                                   *
 c *   Output Variables:                                               *
-c *     sig(3,3)  : stress tensor                                    *
-c *     ctens(3,3,3,3) : constitutive tensor                         *
-c *     ehist(19) : updated history variables                        *
-c *     ierror    : error flag                                       *
+c *     vons      : von Mises stress                                  *
+c *     e_dns     : elastic energy density                            *
+c *     p_dns     : plastic work density                              *
+c *     ctens(3,3,3,3) : constitutive tensor                          *
+c *     ehist(20) : updated history variables                         *
+c *     ierror    : error flag                                        *
 c *                                                                   *
 c **********************************************************************
-      implicit none
-c
+c      implicit none
+
       include 'param_dp.inc'
 c
 c ====================== Local Variables ===============================
-      integer i,j,k,l,it,ierror,idepg
-      integer itrmax
-      parameter( itrmax = 100 )
-c
+      integer i,j,k,l,it
+      integer itrmax, idepg, ierror
+
+      real*8  prope(20)
+      real*8  ctol
       real*8  str(3,3),sig(3,3)
       real*8  ctens(3,3,3,3)
-      real*8  ehist(19)
+      real*8  ehist(20)
+      real*8  vons,e_dns,p_dns
 c
       real*8  DELTA(3,3),FIT(3,3,3,3)
       real*8  plstrg(3,3),betaeg(3,3)
@@ -40,8 +53,7 @@ c
       real*8  hrdtmp,dhdtmp
       real*8  tmpkrd,dkdtmp
       real*8  dhard,dkard
-      real*8  etrs,smean,vons
-      real*8  e_dns,p_dns
+      real*8  etrs,smean
       real*8  ptry,ftreg
       real*8  theta,thetab,A
 c

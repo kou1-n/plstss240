@@ -20,9 +20,9 @@ env/
 # Output files
 *.png
 *.txt
-*.cml
-*.NEU
-*.modfem
+#*.cml
+#*.NEU
+#*.modfem
 out
 inp
 

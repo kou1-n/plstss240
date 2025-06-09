@@ -66,7 +66,8 @@ c ===== PLASTIC CASE =====
         deltag = ftreg /(2.d0*vmu +(2.d0/3.d0)*hk)
         alpeg = alpeg +dsqrt(2.d0/3.d0)*deltag
         oun(:,:) = seta(:,:)/stno
-        betaeg(:,:) = betaeg(:,:) +(2.d0/3.d0)*(1.d0-hpd)*hk*deltag*oun(:,:)
+      betaeg(:,:) = betaeg(:,:)
+     &              +(2.d0/3.d0)*(1.d0-hpd)*hk*deltag*oun(:,:)
         plstrg(:,:) = plstrg(:,:) +deltag*oun(:,:)
         etrs = str(1,1)+str(2,2)+str(3,3)
         sig(:,:) = stry(:,:) -2.d0*vmu*deltag*oun(:,:)

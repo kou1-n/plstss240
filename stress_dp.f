@@ -32,7 +32,8 @@ c **********************************************************************
 c     External hardening functions
       external H_iso, dH_iso_dk, H_kin, dH_kin_dk
 
-      include 'param_dp.inc'
+c     Material parameters are taken from the MATER block
+c     (Young modulus, Poisson ratio, etc.)
 c
 c ====================== Local Variables ===============================
       integer i,j,k,l,it
@@ -50,6 +51,10 @@ c
       real*8  stry(3,3),seta(3,3)
       real*8  eel(3,3)
       real*8  N(3,3),oun(3,3)
+c     Material constants
+      real*8  yng,poi,vmu,vlm,vkp
+      real*8  yld,hk,hpa,hpb,hpd
+      real*8  phi_dp,psi_dp,eta_dp,xi_dp,etabar_dp
 c
       real*8  alpeg,alptmp,alpd
       real*8  deltag,stno
@@ -64,10 +69,31 @@ c --- Variables for 2x2 Newton-Raphson system
       real*8  R(2),dR(2,2),dx(2)
       real*8  sig_eq,sig_eq_trial
       real*8  det
+c     tolerance for Jacobian singularity check
+      real*8, parameter :: TOL_DET = 1.0d-12
 c
 c ===================== Initialize Variables ==========================
       ierror = 0
       idepg = 0
+c
+c --- Set material parameters from the prope array --------------------
+      yng    = prope(1)
+      poi    = prope(2)
+      vmu    = yng/(2.d0*(1.d0 + poi))
+      vlm    = poi*yng/((1.d0 + poi)*(1.d0 - 2.d0*poi))
+      vkp    = yng/(3.d0*(1.d0 - 2.d0*poi))
+      yld    = prope(10)
+      hk     = prope(11)
+      hpa    = prope(12)
+      hpb    = prope(13)
+      hpd    = prope(15)
+      phi_dp = prope(16)
+      psi_dp = prope(17)
+
+      eta_dp   =  sin(phi_dp) / ( sqrt(3.d0) * (3.d0 - sin(phi_dp)) )
+      xi_dp    = 6.d0 * cos(phi_dp) / ( sqrt(3.d0) * (3.d0 - sin(phi_dp)) )
+      etabar_dp = 6.d0 * sin(psi_dp) / ( sqrt(3.d0) *
+     &                                   (3.d0 - sin(psi_dp)) )
 c
 c --- Initialize strain/stress tensors
       do j=1,3
@@ -131,8 +157,10 @@ c --- Compute trial stress norm
       sig_eq_trial = dsqrt(1.5d0)*stno
 c
 c --- Check yield condition
-      ftreg = sig_eq_trial 
-     &      - dsqrt(2.d0/3.d0)*(yld + hk*alpeg)
+      ftreg = sig_eq_trial
+     &      - dsqrt(2.d0/3.d0)
+     &        *( H_iso(alpeg, yld, hk, hpa, hpb)
+     &          + H_kin(alpeg, hk, hpd) )
      &      - eta_dp*ptry
 c
 c ================= Plastic Corrector Step ==========================
@@ -159,20 +187,26 @@ c --- Compute residuals
           R(1) = sig_eq 
      &         - sig_eq_trial 
      &         + dsqrt(2.d0)*vmu*deltag
-          R(2) = sig_eq 
-     &         - dsqrt(2.d0/3.d0)*(yld + hrdtmp + tmpkrd)
-     &         - eta_dp*ptry 
+          R(2) = sig_eq
+     &         - dsqrt(2.d0/3.d0)
+     &           *( H_iso(alptmp, yld, hk, hpa, hpb)
+     &              + H_kin(alptmp, hk, hpd) )
+     &         - eta_dp*ptry
      &         + eta_dp*vkp*etabar_dp*deltag
 c
 c --- Compute Jacobian
           dR(1,1) = dsqrt(2.d0)*vmu
           dR(1,2) = 1.d0
-          dR(2,1) = -vkp*etabar_dp*eta_dp
-          dR(2,2) = 1.d0 
-     &            - dsqrt(2.d0/3.d0)*(dhdtmp + dkdtmp)*xi_dp
+          dR(2,1) = eta_dp*vkp*etabar_dp
+     &               - dsqrt(2.d0/3.d0)*(dhdtmp + dkdtmp)*xi_dp
+          dR(2,2) = 1.d0
 c
 c --- Solve 2x2 system
           det = dR(1,1)*dR(2,2) - dR(1,2)*dR(2,1)
+          if(dabs(det).lt.TOL_DET) then
+            ierror = 21
+            return
+          endif
           dx(1) = (-R(1)*dR(2,2) + R(2)*dR(1,2))/det
           dx(2) = (-R(2)*dR(1,1) + R(1)*dR(2,1))/det
 c

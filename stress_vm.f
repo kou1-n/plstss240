@@ -1,4 +1,4 @@
-      subroutine stress(itrmax, idepg,
+      subroutine stress_vm(itrmax, idepg,
      &                   prope,  sig,   str, ehist,
 c    &                   prope,!plstrg,betaeg, alpeg,
      &                    ctol,  vons, e_dns, p_dns,
@@ -6,6 +6,9 @@ c    &                   prope,!plstrg,betaeg, alpeg,
      &                  ierror )
 c
       implicit double precision(a-h,o-z)
+c     External hardening functions
+      external H_iso, dH_iso_dk, H_kin, dH_kin_dk
+      double precision H_iso, dH_iso_dk, H_kin, dH_kin_dk
 c
       dimension prope(20)
       dimension sts(3,3),stn(3,3)
@@ -81,8 +84,7 @@ c
       stno = dsqrt(stno)
 c
 c  === Compute Hardening Function & Yield Function ===
-      hard = hpd* hk*alpeg
-     &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg))
+      hard = H_iso(alpeg, yld, hk, hpa, hpb) - yld
 c
       ftreg = stno -dsqrt(2.d0/3.d0)*(yld +hard)
 c
@@ -101,17 +103,15 @@ c                       ( Box 3.1. step 2 )
           alpd = alptmp -alpeg
 c
 c         --- K(\alpha^{(n)}_{n+1}) -\sigma_Y
-          hrdtmp = hpd*hk*alptmp
-     &            +(hpa -yld)*(1.d0 -dexp(-hpb*alptmp))
+          hrdtmp = H_iso(alptmp, yld, hk, hpa, hpb) - yld
 c         --- K'(\alpha^{(n)}_{n+1})
-          dhdtmp = hpd*hk
-     &            +hpb*(hpa -yld)*dexp(-hpb*alptmp)
+          dhdtmp = dH_iso_dk(alptmp, yld, hk, hpa, hpb)
 c
 c         --- H(\alpha^{(n)}_{n+1}) -H(\alpha_{n})
-          tmpkrd = (1.d0 -hpd)* hk*alpd
+          tmpkrd = H_kin(alptmp, hk, hpd) - H_kin(alpeg, hk, hpd)
 c
 c         --- H'(\alpha^{(n)}_{n+1}) -H(\alpha_{n})
-          dkdtmp = (1.d0 -hpd)* hk
+          dkdtmp = dH_kin_dk(hk, hpd)
 c
           gg = -dsqrt(2.d0/3.d0)*(yld +hrdtmp +tmpkrd)
      &         +stno -2.d0*vmu*deltag
@@ -141,7 +141,7 @@ c
 c     --- compute the plastic strain et.al.
         alpd = alpeg -alptmp
 c
-        tmpkrd = (1.d0 -hpd)* hk*alpd
+        tmpkrd = H_kin(alpeg, hk, hpd) - H_kin(alptmp, hk, hpd)
         etrs = str(1,1) +str(2,2) +str(3,3)
 c
         betaeg(:,:) = betaeg(:,:) +dsqrt(2.d0/3.d0)*tmpkrd*oun(:,:)
@@ -150,8 +150,8 @@ c
      &                                 +vkp*etrs*DELTA(:,:)
 c
 c     --- update consititutive tensor: "ctens"
-        dhard = hpd* hk +hpb*(hpa -yld)*dexp(-hpb*alpeg)
-        dkard = (1.d0 -hpd)* hk
+        dhard = dH_iso_dk(alpeg, yld, hk, hpa, hpb)
+        dkard = dH_kin_dk(hk, hpd)
 c    &        +(hpa -yld)*(1.d0 -dexp(-hpb*alpha  ))
 
         theta = 1.d0 -(2.d0*vmu*deltag)/stno

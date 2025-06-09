@@ -545,7 +545,14 @@ Nov 28, 2005. Kazumi Matsui
 +------------+------------+--------------------------------------+------------+------------------------+
 
 > J~2~ Flow Theory with nonlinear Isotropic Hardening
->
+>$$
+>f(\sigma,\alpha) = \bigl\lVert \operatorname{dev}(\sigma) \bigr\rVert 
+>                  \;-\; \sqrt{\dfrac{2}{3}}\,K(\alpha), 
+>\qquad
+>K(\alpha) = \sigma_y + H\alpha 
+>           + \bigl(\sigma_y^{\infty} - \sigma_y\bigr)\!
+>             \left( 1 - e^{-\delta \alpha} \right)
+>$$
 > ![](media/image13.wmf)
 
 ## /EULER/ - Euler Angles

@@ -10,7 +10,6 @@ This project contains a finite element analysis solver written in Fortran. It so
 
 * **Intel Fortran Compiler** (`ifort`)
 * **Intel Math Kernel Library (MKL)** – set the `MKLROOT` environment variable to your installation path
-
 ## Building
 
 The repository provides a Makefile configured for the Intel compiler toolchain. Simply run:
@@ -76,3 +75,4 @@ This repository has been successfully cloned and tested on the following systems
 ## Remote repository
 
 This project's remote repository is hosted at [https://github.com/kou1-n/plstss240](https://github.com/kou1-n/plstss240).
+

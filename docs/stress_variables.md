@@ -154,4 +154,44 @@
 
 | コード | 説明 |
 |--------|------|
-| `ierror = 17` | Newton-Raphson法が収束しない（塑性乗数計算失敗） | 
+| `ierror = 17` | Newton-Raphson法が収束しない（塑性乗数計算失敗） |
+
+## `stress_dp.f` 変数説明
+
+`stress_dp.f` は 2 変数の Newton–Raphson 法を用いた
+Drunker–Prager 模型の応力更新ルーチンです。インターフェースは次の
+通りです。
+
+```fortran
+subroutine stress_dp(str, sig, ctens, ehist, ierror)
+```
+
+### 引数
+
+| 変数名 | 型 | 次元 | 説明 |
+|--------|---|------|------|
+| `str`  | real*8 | (3,3) | 全ひずみテンソル |
+| `sig`  | real*8 | (3,3) | 応力テンソル（出力） |
+| `ctens`| real*8 | (3,3,3,3) | 接線剛性テンソル（出力） |
+| `ehist`| real*8 | (19) | 履歴変数配列 (入力/出力) |
+| `ierror`| integer | スカラー | エラーフラグ |
+
+### 主な内部変数
+
+`stress.f` と共通の変数に加え，以下の変数を用います。
+
+| 変数名 | 型 | 説明 |
+|--------|---|------|
+| `R(2)` | real*8 | 2×2 Newton–Raphson 法の残差ベクトル |
+| `dR(2,2)` | real*8 | 残差のヤコビアン行列 |
+| `dx(2)` | real*8 | 未知量の更新量 `Δγ` と `σ_eq` |
+| `sig_eq` | real*8 | 等価応力（未知量） |
+| `sig_eq_trial` | real*8 | 試行等価応力 |
+| `det` | real*8 | 2×2 行列式（Newton–Raphson 解） |
+
+### 2 変数 Newton–Raphson 法
+
+`stress_dp.f` では塑性乗数 `Δγ` と等価応力 `σ_eq` を同時に求めるため，
+2×2 の非線形方程式を解きます。`stress.f` が 1 変数 (`Δγ`) のみを
+反復するのに対し，`stress_dp.f` は応力更新の安定化を目的に 2 変数を
+未知とする点が異なります。

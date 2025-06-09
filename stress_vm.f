@@ -91,7 +91,7 @@ c
 c  ===== PLASTIC CASE
 c          determine the Lagrange multiplier by N.R. iteration =====
       if(ftreg.gt.0.d0) then
-c             write(*,*) 1
+c     --- Plastic state detected (output managed at step level)
         idepg = 1
 c     --- initilization ( Box 3.1. step 1 )
         deltag = 0.d0

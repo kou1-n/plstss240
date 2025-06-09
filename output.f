@@ -29,6 +29,9 @@ c
       common /basic/ nx,nelx,ndf,node,nsn,lmat,lang,ngaus
       common /print/ lpstp,luprt,lfprt,lnprt,lsprt,lbprt
 c
+      save tene_p_prev
+      data tene_p_prev/0.d0/
+c
 c **********************************************************************
       keyLAS = '/LASTD/'
       keyEND = '/ENDOF/'
@@ -150,6 +153,12 @@ c
 c   === Step, # of Iterations, and some Norms ===
       WRITE(lwd,9302) in,itr,dfact,unorm,tnorm
  9302 FORMAT(2i5,3e15.7)
+c
+c   === Check for first plasticity ===
+      if(tene_p.gt.1.d-12 .and. tene_p_prev.le.1.d-12) then
+        WRITE(lwd,'(a,i3)') 'First plastic deformation at step: ',in
+      endif
+      tene_p_prev = tene_p
 c
 c ***** Output of Energy (ENE_***.txt)*********************************
 c   === Headers ===

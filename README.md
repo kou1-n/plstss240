@@ -19,7 +19,7 @@ The repository provides a Makefile configured for the Intel compiler toolchain. 
 make
 ```
 
-This compiles the source files and links against MKL, producing the executable defined by the `TARGET` variable in the Makefile (by default `$(HOME)/bin/plstss2393_nagasaku`). Use `make clean` to remove the built objects and executable.
+This compiles the source files and links against MKL, producing the executable defined by the `TARGET` variable in the Makefile (by default `$(HOME)/bin/plstss2393_nagasaku`). Object files are written to the `obj/` directory to keep the project root tidy. Use `make clean` to remove the built objects and executable.
 
 ## Running
 

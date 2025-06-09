@@ -89,9 +89,7 @@ This CML-formatted file was translated by "NEU2CML"
     1    0    0    0    0
     0    0    0    0    9
 /PSTEP/
-    2
-    1    5
-    2   10
+   -1
 /PDISP/
     3
     1       1    1

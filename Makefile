@@ -1,9 +1,10 @@
 #.SUFFIXES:
 TARGET  =  $(HOME)/bin/plstss2393_nagasaku
 FC = ifort
-#
+# Directory where object files are placed
+OBJDIR = obj
+
 F90 = $(FC)
-#
 ##### MKL for EM64T #####
 MKLPATH =$(MKLROOT)/lib/em64t
 MKLINCLUDE = $(MKLROOT)/include
@@ -45,14 +46,20 @@ FFLAGS = -O3 -C
 F90FLAGS = $(FFLAGS)
 LINKER = $(FC)
 # --------------------------------------
-OBJMAIN  = main.o flopen.o analys.o redcml.o inv_22.o inv_33.o zerodt.o gaussj.o dgaussj.o
-OBJPRE   = chkary.o estima.o presky.o addres.o inform.o initia.o initq4.o initt3.o inith8.o initq8.o initt6.o initt4.o initp1.o 
-OBJPARDIS= prepar.o rowupr.o parsol.o pars00.o pars99.o pcgsol.o 
-OBJASMB  = forces.o assemb.o elastc.o plastc.o mapcrs.o mapsky.o 
-OBJELM   = quad4a.o pquad4.o hexa8a.o phexa8.o tria3a.o ptria3.o pres2d.o pres3d.o triap1.o ptrip1.o tria6a.o ptria6.o quad8a.o pquad8.o
-#OBJBASE  = trans1.o trans2.o trans3.o trans4.o
-OBJSLV   = constr.o skylin.o
-OBJPOST  = update.o postpr.o output.o stored.o restor.o stress.o stress_vm.o st_gtn.o
+OBJMAIN  = $(OBJDIR)/main.o $(OBJDIR)/flopen.o $(OBJDIR)/analys.o $(OBJDIR)/redcml.o $(OBJDIR)/inv_22.o \
+           $(OBJDIR)/inv_33.o $(OBJDIR)/zerodt.o $(OBJDIR)/gaussj.o $(OBJDIR)/dgaussj.o
+OBJPRE   = $(OBJDIR)/chkary.o $(OBJDIR)/estima.o $(OBJDIR)/presky.o $(OBJDIR)/addres.o $(OBJDIR)/inform.o \
+           $(OBJDIR)/initia.o $(OBJDIR)/initq4.o $(OBJDIR)/initt3.o $(OBJDIR)/inith8.o $(OBJDIR)/initq8.o \
+           $(OBJDIR)/initt6.o $(OBJDIR)/initt4.o $(OBJDIR)/initp1.o
+OBJPARDIS= $(OBJDIR)/prepar.o $(OBJDIR)/rowupr.o $(OBJDIR)/parsol.o $(OBJDIR)/pars00.o $(OBJDIR)/pars99.o $(OBJDIR)/pcgsol.o
+OBJASMB  = $(OBJDIR)/forces.o $(OBJDIR)/assemb.o $(OBJDIR)/elastc.o $(OBJDIR)/plastc.o $(OBJDIR)/mapcrs.o $(OBJDIR)/mapsky.o
+OBJELM   = $(OBJDIR)/quad4a.o $(OBJDIR)/pquad4.o $(OBJDIR)/hexa8a.o $(OBJDIR)/phexa8.o $(OBJDIR)/tria3a.o \
+           $(OBJDIR)/ptria3.o $(OBJDIR)/pres2d.o $(OBJDIR)/pres3d.o $(OBJDIR)/triap1.o $(OBJDIR)/ptrip1.o \
+           $(OBJDIR)/tria6a.o $(OBJDIR)/ptria6.o $(OBJDIR)/quad8a.o $(OBJDIR)/pquad8.o
+#OBJBASE  = $(OBJDIR)/trans1.o $(OBJDIR)/trans2.o $(OBJDIR)/trans3.o $(OBJDIR)/trans4.o
+OBJSLV   = $(OBJDIR)/constr.o $(OBJDIR)/skylin.o
+OBJPOST  = $(OBJDIR)/update.o $(OBJDIR)/postpr.o $(OBJDIR)/output.o $(OBJDIR)/stored.o $(OBJDIR)/restor.o \
+           $(OBJDIR)/stress.o $(OBJDIR)/stress_vm.o $(OBJDIR)/st_gtn.o
 #
 #OBJRCM   = genrcm.o
 #
@@ -60,22 +67,20 @@ OBJPOST  = update.o postpr.o output.o stored.o restor.o stress.o stress_vm.o st_
 OBJALL = $(OBJMAIN) $(OBJPRE) $(OBJPARDIS) $(OBJASMB) $(OBJELM) $(OBJSLV) $(OBJPOST)
 # $(OBJBASE)
 # --------------------------------------
-$(TARGET):$(OBJALL)
+$(TARGET): $(OBJALL)
 	$(FC) $(FFLAGS) $(MKL) $(OBJALL) -o $(TARGET) $(MKL)
 	@echo make PLSTss Version 2.2 done.
-#
+
+# ensure object directory exists
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
 clean:
 	rm -f $(TARGET) $(OBJALL)
-#
-#.SUFFIXES: $(SUFFIXES) .f90
-#.f90.o:
-#	$(F90) $(F90FLAGS) -c $<
-#
+	rm -rf $(OBJDIR)
+
+# Pattern rule to build object files in $(OBJDIR)
 .SUFFIXES: $(SUFFIXES) .f
-.f.o:
-#	$(FC) $(FFLAGS) $(MKL) -c $<
-#	$(FC) $(FFLAGS) -c $<
-#	$(F90) $(F90LAGS) /compile_only /object:test.o  $<
-#	$(F90) $(F90LAGS) /c /object:$*.o  $<
-#
+$(OBJDIR)/%.o: %.f | $(OBJDIR)
+	$(FC) $(FFLAGS) -c $< -o $@
 

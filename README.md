@@ -63,8 +63,8 @@ The `docs` directory contains several other references:
   Codex agent.
 - [`docs/CMLformat07.md`](docs/CMLformat07.md) — detailed structure of the CML
   input and output format.
-- [`docs/stress_variables.md`](docs/stress_variables.md) — variable list for
-  `stress.f`.
+- [`docs/stress_variables.md`](docs/stress_variables.md) — variable lists for
+  `stress.f` and `stress_dp.f`.
 
 ## Development Environment
 

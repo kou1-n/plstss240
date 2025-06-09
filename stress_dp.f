@@ -98,6 +98,7 @@ c --- Set material parameters from the prope array --------------------
      &                                   (3.d0 - sin(psi_dp)) )
 c
 c --- Initialize strain/stress tensors
+      deltag = 0.d0
       do j=1,3
         do i=1,3
           plstrg(i,j) = 0.d0

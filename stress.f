@@ -67,7 +67,8 @@ c     hpc = prope(14)
       psi_dp = prope(17) !DILATANCY_ANGLE
 c Drucker-Prager の η, ξ, および 非関連の場合の η̄ の外側一致の式に合わせて再定義
       eta_dp=  sin(phi_dp) / ( dsqrt(3.d0) * (3.d0 - sin(phi_dp)) )
-      xi_dp = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) * (3.d0 - sin(phi_dp)) )
+      xi_dp = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) 
+     &                              * (3.d0 - sin(phi_dp)) )
       etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0)  
      &                                          * (3.d0 - sin(psi_dp)) )
 

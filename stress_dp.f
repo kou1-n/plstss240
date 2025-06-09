@@ -186,6 +186,7 @@ c
 c ================= Plastic Corrector Step ==========================
       if(ftreg.gt.0.d0) then
         idepg = 1
+c     --- Plastic state detected (output managed at step level)
 c
 c --- Initialize unknowns
         deltag = 0.d0

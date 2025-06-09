@@ -6,6 +6,18 @@ Edited Fortran program implementing the Drucker--Prager plasticity model with co
 
 This project contains a finite element analysis solver written in Fortran. It solves elasto-plastic problems using the Drucker--Prager constitutive model with advanced hardening options. The code is derived from earlier PLSTss releases and is intended for research purposes.
 
+## Features
+
+### Plastic State Monitoring
+
+The program automatically monitors plastic deformation onset at the step level. When plasticity first occurs during loading, a message is written to the NOR_*.txt file:
+
+```
+First plastic deformation at step:   4
+```
+
+This feature provides clear indication of when the material transitions from elastic to plastic behavior, improving analysis workflow and result interpretation.
+
 ## Build requirements
 
 * **Intel Fortran Compiler** (`ifort`)
@@ -97,12 +109,52 @@ The `docs` directory contains several other references:
   Codex agent.
 - [`docs/CMLformat07.md`](docs/CMLformat07.md) — detailed structure of the CML
   input and output format.
-
+- [`docs/plastic_monitoring.md`](docs/plastic_monitoring.md) — plastic state detection and monitoring features.
 - [`docs/stress_variables.md`](docs/stress_variables.md) — variable lists for
   `stress.f` and `stress_dp.f`.
 - [`docs/plstss_flow_ja.md`](docs/plstss_flow_ja.md) — PLSTss の全体フローを
   日本語で解説した資料。
 
+## Interpretation
+
+- **Steps 1-3**: Elastic behavior (converges in 1 iteration)
+- **Step 4**: First plastic deformation (requires 4 iterations)
+- **Step 5+**: Continued plastic behavior
+
+## Advantages of Step-Level Monitoring
+
+### Before (Integration Point Level)
+- Up to 64 redundant messages (8 elements × 8 Gauss points)
+- Difficult to determine onset step
+- Cluttered output files
+
+### After (Step Level)
+- Single, clear message per analysis
+- Precise step identification
+- Clean, readable output
+
+## Technical Details
+
+### Modified Files
+
+1. **`stress_vm.f`**: Removed per-integration-point output
+2. **`stress_dp.f`**: Removed per-integration-point output  
+3. **`output.f`**: Added step-level detection logic
+
+### Detection Threshold
+
+The threshold `1.d-12` is used to account for numerical precision in floating-point calculations while detecting meaningful plastic deformation.
+
+### Energy-Based Detection
+
+Using plastic energy (`tene_p`) for detection provides:
+- Global perspective across all elements
+- Reliable indication of actual plastic work
+- Immunity to local numerical artifacts
+
+## Usage
+
+No additional user input is required. The plastic monitoring is automatically active and will output to the standard NOR_*.txt file generated during analysis.
 
 ## Development Environment
 

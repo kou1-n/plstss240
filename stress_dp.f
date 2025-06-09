@@ -10,13 +10,13 @@ c *   with Combined Nonlinear Isotropic/Kinematic Hardening           *
 c *   Using Return-Mapping Algorithm with Two Unknowns                *
 c *                                                                   *
 c *   Input Variables:                                                *
-c *     itrmax    : max iterations (unused)                           *
+c *     itrmax    : maximum number of Newton iterations               *
 c *     idepg     : plastic flag (returned)                           *
 c *     prope(20) : material constants (unused)                       *
 c *     sig(3,3)  : stress tensor                                     *
 c *     str(3,3)  : strain tensor                                     *
 c *     ehist(20) : history variables                                 *
-c *     ctol      : convergence tol. (unused)                         *
+c *     ctol      : convergence tolerance for Newton iteration        *
 c *                                                                   *
 c *   Output Variables:                                               *
 c *     vons      : von Mises stress                                  *
@@ -27,7 +27,7 @@ c *     ehist(20) : updated history variables                         *
 c *     ierror    : error flag                                        *
 c *                                                                   *
 c **********************************************************************
-c      implicit none
+      implicit none
 
       include 'param_dp.inc'
 c

@@ -12,6 +12,14 @@ plstss240の有限要素解析結果を可視化するためのPythonツール�
   - グラフ: `drucker_prager_analysis_RES_cube250514.png`
   - データ: `drucker_prager_data_RES_cube250514.csv`
 
+### 2. 硬化曲線解析ツール (新規追加)
+- **ファイル**: `hardening_simple.py`
+- **機能**: stress_vm.fの硬化モデルに基づく降伏応力の硬化曲線を可視化
+- **出力**:
+  - グラフ: `hardening_analysis_simple.png` (4つのプロット)
+  - 比較: `hardening_comparison.png` (理論vs実解析)
+  - データ: `hardening_actual_data.csv`, `hardening_theory_curve.csv`
+
 **使用方法**:
 ```bash
 cd scripts

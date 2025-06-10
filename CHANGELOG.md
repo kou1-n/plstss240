@@ -1,10 +1,32 @@
-# Changelog
+# CHANGELOG
 
-## [Unreleased]
-- **Added plastic state detection**: Implemented step-level plastic deformation monitoring in NOR_*.txt output files
-  - Removed redundant per-integration-point output from `stress_vm.f` and `stress_dp.f`
-  - Added step-level plastic detection in `output.f` using plastic energy comparison
-  - Output format: "First plastic deformation at step: X" when plasticity first occurs
-  - Significantly improved readability of convergence monitoring files
-- Updated `docs/stress_variables.md` to match the current `stress_dp` subroutine interface and added auto-check note.
-- Added CI script `scripts/check_stress_dp_signature.py` to verify documentation against source.
+## 2025-06-10 - ファイル整理と変形量調整
+
+### 🗂️ Pythonファイル整理
+- **ワークディレクトリ清掃**: `element8_dual_axis.py`を削除（統合済み）
+- **分析ツールアーカイブ**: `analyze_hardening_linearity.py`をアーカイブ
+- **現在の構成**:
+  - `scripts/plstss_visualizer.py` - メイン統合可視化ツール
+  - `scripts/visualize.py` - 簡単エントリーポイント
+  - `scripts/hardening_simple.py` - 材料パラメータ表示
+  - `scripts/data_loader.py` - データ読み込みライブラリ
+  - `scripts/archive/` - 古いツール保管
+
+### 📐 変形量調整
+- **cube250514.cml**: `2.50000E-03` → `2.50000E-02` (**10倍**)
+- **cube250514_dp.cml**: `2.00000E-03` → `2.00000E-02` (**10倍**)
+- **理由**: 硬化関数の非線形性をより明確に観察するため
+
+### 🎯 期待される効果
+- プラスチックひずみ範囲が拡大（~0.002 → ~0.02）
+- 非線形硬化挙動がより顕著に観察可能
+- 硬化率の変化がグラフで視覚的に確認可能
+
+---
+
+## 2025-06-10 - 可視化ツール統合
+
+### 統合前（7+ツール）から統合後（4ツール）への整理
+- 複数の個別ツールから統一されたファミリーシステムに移行
+- メイン機能はplstss_visualizer.pyに集約
+- アーカイブシステムで古いツールを保持

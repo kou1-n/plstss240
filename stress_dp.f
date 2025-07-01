@@ -26,7 +26,7 @@ c *     ctens(3,3,3,3) : constitutive tensor                          *
 c *     ehist(20) : updated history variables                         *
 c *     ierror    : error flag                                        *
 c *                                                                   *
-c **********************************************************************
+c *********************************************************************
       implicit none
 
 c     External hardening functions

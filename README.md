@@ -78,7 +78,6 @@ This method is particularly useful for:
 To keep the different source types organized, the repository is structured as
 follows:
 
-- `scripts/` – Python utilities for post‑processing and visualisation
 - `data/` – example input and output files (`.cml`, `.NEU`, `.txt`, etc.)
 - Fortran source files remain in the project root so that the existing
   `Makefile` continues to work without modification.

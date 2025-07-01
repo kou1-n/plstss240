@@ -5,12 +5,6 @@
 ### 🗂️ Pythonファイル整理
 - **ワークディレクトリ清掃**: `element8_dual_axis.py`を削除（統合済み）
 - **分析ツールアーカイブ**: `analyze_hardening_linearity.py`をアーカイブ
-- **現在の構成**:
-  - `scripts/plstss_visualizer.py` - メイン統合可視化ツール
-  - `scripts/visualize.py` - 簡単エントリーポイント
-  - `scripts/hardening_simple.py` - 材料パラメータ表示
-  - `scripts/data_loader.py` - データ読み込みライブラリ
-  - `scripts/archive/` - 古いツール保管
 
 ### 📐 変形量調整
 - **cube250514.cml**: `2.50000E-03` → `2.50000E-02` (**10倍**)
@@ -27,6 +21,5 @@
 ## 2025-06-10 - 可視化ツール統合
 
 ### 統合前（7+ツール）から統合後（4ツール）への整理
-- 複数の個別ツールから統一されたファミリーシステムに移行
-- メイン機能はplstss_visualizer.pyに集約
+- 複数の個別ツールを統合し、共通のシステムとして整理
 - アーカイブシステムで古いツールを保持

@@ -18,8 +18,8 @@ env/
 .idea/
 
 # Output files
-*.png
-*.txt
+#*.png
+#*.txt
 #*.cml
 #*.NEU
 #*.modfem

@@ -161,7 +161,7 @@ c         === Set Deformation Histtories ===
             histi(:) = histi0(:,ig,nel)
 c
 c         === Compute Local Stresses ===
-c            print'("--------------------------------ig=",2I5)',ig,MATYPE
+c           print'("--------------------------------ig=",2I5)',ig,MATYPE
 c            ! MATYPE=4 uses the new stress_dp routine
           if( MATYPE.eq.1) then
             CALL stress(itrmax, idepg,

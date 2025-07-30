@@ -163,12 +163,6 @@ c
      &                +etabar_dp*deltag*oun(:,:)*DELTA(:,:)/3.d0
 
 
-
-
-
-
-
-
         sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:) !ok
      &            +((etrs/3.d0) - vkp*etabar_dp*deltag)*DELTA(:,:)!ok
 c c　以上は大丈夫

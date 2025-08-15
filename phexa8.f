@@ -187,6 +187,12 @@ c            ! MATYPE=4 uses the new stress_dp routine
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
      &                  ierror )
+          elseif(MATYPE.eq.5) then
+            CALL stress_dp_1by1(itrmax, idepg,
+     &                   prope,   sig,   str, ehist,
+     &                    ctol,  vons, e_dns, p_dns,
+     &                   ctens,
+     &                  ierror )     
           else
             STOP 'Something wrong in phexa8'
           endif

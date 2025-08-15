@@ -1,4 +1,4 @@
-       subroutine stress(itrmax, idepg,
+       subroutine stress_dp_1by1(itrmax, idepg,
      &                   prope,  sig,   str, ehist,
 c    &                   prope,!plstrg,betaeg, alpeg,
      &                    ctol,  vons, e_dns, p_dns,
@@ -192,7 +192,7 @@ c
      &              *(eta_dp*oun(ii,jj)*DELTA(kk,ll)
      &              + etabar_dp*DELTA(ii,jj)*oun(kk,ll)) 
      & 
-     &              vkp*(1.d0-vkp*eta_dp*etabar_dp*A)
+     &              + vkp*(1.d0-vkp*eta_dp*etabar_dp*A)
      &                         *DELTA(ii,jj)*DELTA(kk,ll)
      
               enddo

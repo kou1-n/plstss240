@@ -55,13 +55,14 @@ c    --- plastic parameters
       hpb = prope(13)
 c     hpc = prope(14)
       hpd = prope(15)
-      phi_dp = 1.d0 !prope(16)
-      psi_dp = 1.d0 !prope(17)
-      eta_dp   = 1.d0 !sin(phi_dp) / ( dsqrt(3.d0) * (3.d0 - sin(phi_dp)) )
-      xi_dp    = 1.d0 !6.d0 * cos(phi_dp) / ( dsqrt(3.d0) *
-c     &                                   (3.d0 - sin(phi_dp)) )
-      etabar_dp = 1.d0 !6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
-c     &                                   (3.d0 - sin(psi_dp)) )
+      phi_dp = prope(16)
+      psi_dp = prope(17)
+      eta_dp   = 6.d0 * sin(phi_dp) / ( dsqrt(3.d0) * 
+     &                                 (3.d0 - sin(phi_dp)) )
+      xi_dp    = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) *
+     &                                 (3.d0 - sin(phi_dp)) )
+      etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
+     &                                  (3.d0 - sin(psi_dp)) )
 c
 c    --- thermal parameters
       row = prope(3)

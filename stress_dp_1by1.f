@@ -42,12 +42,12 @@ c     --- Young modulus
       yng = prope(1)
 c     --- Poisson's ratio
       poi = prope(2)
-c       --- Lame const. 'mu' = shear modulus
-        vmu = yng/(2.d0*(1.d0 +poi))
-c       --- Lame const. 'lamuda'
-        vlm = poi*yng/((1.d0 +poi)*(1.d0 -2.d0*poi))
-c       --- Bulk modulus 'kappa'
-        vkp = yng/(3.d0*(1.d0 -2.d0*poi))
+c     --- Lame const. 'mu' = shear modulus
+      vmu = yng/(2.d0*(1.d0 +poi))
+c     --- Lame const. 'lamuda'
+      vlm = poi*yng/((1.d0 +poi)*(1.d0 -2.d0*poi))
+c     --- Bulk modulus 'kappa'
+      vkp = yng/(3.d0*(1.d0 -2.d0*poi))
 c    --- plastic parameters
       yld = prope(10)
       hk  = prope(11)

@@ -1,6 +1,5 @@
        subroutine stress_dp_1by1(itrmax, idepg,
      &                   prope,  sig,   str, ehist,
-c    &                   prope,!plstrg,betaeg, alpeg,
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
      &                  ierror )
@@ -53,7 +52,7 @@ c    --- plastic parameters
       hk  = prope(11)
       hpa = prope(12)
       hpb = prope(13)
-c     hpc = prope(14)
+      hpc = prope(14)
       hpd = prope(15)
       phi_dp = prope(16)
       psi_dp = prope(17)
@@ -91,8 +90,8 @@ c
 c
 c  === Compute Hardening Function & Yield Function ===
 c Voce型の硬化則を用いるが，パラメータで線形硬化則化する
-      hard = hpd* hk*alpeg
-     &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg))
+      hard = hpd*(hk*alpeg
+     &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
 c
       ftreg = stno + dsqrt(2.d0/3.d0)*eta_dp*emean 
      &      - xi_dp*dsqrt(2.d0/3.d0)*(yld +hard)

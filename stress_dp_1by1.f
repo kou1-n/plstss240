@@ -10,7 +10,7 @@ c
       dimension sts(3,3),stn(3,3)
       dimension str(3,3),stry(3,3),seta(3,3),
      &          sig(3,3),oun(3,3),sd(3,3),eel(3,3),
-     &          plstrg(3,3),betaeg(3,3)
+     &          plstrg(3,3)
       dimension ctens(3,3,3,3)
       dimension ehist(20)
 c
@@ -27,13 +27,7 @@ c ***** Load Deformation Histories *************************************
           plstrg(jj,ii) = ehist(kk)
         enddo
       enddo
-      do ii=1,3
-        do jj=1,3
-          kk = kk+1
-          betaeg(jj,ii) = 0.d0 !ehist(kk)
-c 移動硬化はこのケースでは実質的に行わないようにする
-        enddo
-      enddo
+c     移動硬化は使用しない（等方硬化のみ）
 c
 c ***** Set Material Properties ****************************************
 c    --- elastic parameters
@@ -76,9 +70,7 @@ c   === Deviatoric Stress => Trial Stress ===
       emean = (str(1,1) +str(2,2) +str(3,3))/3.d0
 c
       stry = 2.d0*vmu*(str -emean*DELTA -plstrg)
-      !stry(:,:) = 2.d0*vmu*(str(:,:) -emean*DELTA(:,:) -plstrg(:,:))
-      seta = stry -betaeg
-      !seta(:,:) = stry(:,:) -betaeg(:,:)
+      seta = stry
 c
       stno = 0.d0
       do jj=1,3
@@ -111,24 +103,19 @@ c                       ( Box 3.1. step 2 )
           alpd = alptmp -alpeg
 c
 c         --- K(\alpha^{(n)}_{n+1}) -\sigma_Y
-          hrdtmp = hpd*hk*alptmp
-     &            +(hpa -yld)*(1.d0 -dexp(-hpb*alptmp))
+          hrdtmp = hpd*(hk*alptmp
+     &            +(hpa -yld)*(1.d0 -dexp(-hpb*alptmp)))
 c         --- K'(\alpha^{(n)}_{n+1})
-          dhdtmp = hpd*hk
-     &            +hpb*(hpa -yld)*dexp(-hpb*alptmp)
+          dhdtmp = hpd*(hk
+     &            +hpb*(hpa -yld)*dexp(-hpb*alptmp))
 c
-c         --- H(\alpha^{(n)}_{n+1}) -H(\alpha_{n})
-          tmpkrd = (1.d0 -hpd)* hk*alpd
-c
-c         --- H'(\alpha^{(n)}_{n+1}) -H(\alpha_{n})
-          dkdtmp = (1.d0 -hpd)* hk
 c         ---ggに降伏関数の前のステップの値を入れる
           gg = stno + dsqrt(2.d0/3.d0)*eta_dp*emean
-     &      - xi_dp*dsqrt(2.d0/3.d0)*(yld +hrdtmp +tmpkrd)
+     &      - xi_dp*dsqrt(2.d0/3.d0)*(yld +hrdtmp)
 c         ---Dgに降伏関数の微分の前のステップの値を入れる
           Dg = -2.d0*vmu 
      &        -dsqrt(2.d0/3.d0)*vkp*eta_dp*etabar_dp
-     &        -xi_dp*xi_dp*dsqrt(2.d0/3.d0)*(dhdtmp+dkdtmp)
+     &        -xi_dp*xi_dp*dsqrt(2.d0/3.d0)*dhdtmp
 c
           deltag = deltag -gg/Dg
           alptmp = alpeg +xi_dp*dsqrt(2.d0/3.d0)*deltag
@@ -154,10 +141,7 @@ c
 c     --- compute the plastic strain et.al.
         alpd = alpeg -alptmp
 c
-        tmpkrd = (1.d0 -hpd)* hk*alpd
         etrs = str(1,1) +str(2,2) +str(3,3)
-c
-        betaeg(:,:) = betaeg(:,:) +0.d0 !dsqrt(2.d0/3.d0)*tmpkrd*oun(:,:)
         plstrg(:,:) = plstrg(:,:) 
      &                +dsqrt(2.d0)*deltag*oun(:,:)
      &                +etabar_dp*deltag*oun(:,:)*DELTA(:,:)/3.d0
@@ -169,11 +153,9 @@ c c　以上は大丈夫
 
 
 c     --- update consititutive tensor: "ctens"
-        dhard = hpd* hk +hpb*(hpa -yld)*dexp(-hpb*alpeg)
-        dkard = (1.d0 -hpd)* hk
-c    &        +(hpa -yld)*(1.d0 -dexp(-hpb*alpha  ))
+        dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg))
         A = 1.d0/(vmu + vkp*etabar_dp*eta_dp 
-     &          + xi_dp*xi_dp*(dhdtmp + dkdtmp))
+     &          + xi_dp*xi_dp*dhard)
 
         theta = 1.d0 -(dsqrt(2.d0)*vmu*deltag)/stno !ok
         thetab= (dsqrt(2.d0)*vmu*deltag)/stno - vmu*A !ok
@@ -276,12 +258,7 @@ c ***** Store Deformation Histories ************************************
           ehist(kk) = plstrg(jj,ii)
         enddo
       enddo
-      do ii=1,3
-        do jj=1,3
-          kk = kk+1
-          ehist(kk) = betaeg(jj,ii)
-        enddo
-      enddo
+c     移動硬化変数は保存しない（使用しないため）
 c
 c
 c **********************************************************************

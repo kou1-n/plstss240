@@ -40,7 +40,7 @@ This CML-formatted file was translated by "NEU2CML"
     1
     0    0    0     1.00000
 /SOLUT/
-   20    0    0    0    0
+  100    0    0    0    0
     0    0    0    0   10
 /SOLVR/
     1    0    0    0    0

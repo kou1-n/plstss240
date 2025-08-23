@@ -73,12 +73,12 @@ c   === Deviatoric Stress => Trial Stress ===
 c   emean:静水圧成分（スカラー）
       emean = (str(1,1) +str(2,2) +str(3,3))/3.d0
 c
-      stry = 2.d0*vmu*(str -emean*DELTA -plstrg)
+      stry = 2.d0*vmu*(str -emean*DELTA -plstrg) !p366 s_n+1^tr
 c
       stno = 0.d0
       do jj=1,3
         do ii=1,3
-          stno = stno +stry(ii,jj)**2
+          stno = stno +stry(ii,jj)**2 !試行のstryで作成したノルム
         enddo
       enddo
       stno = dsqrt(stno)
@@ -112,15 +112,15 @@ c         --- K'(\alpha^{(n)}_{n+1})
 c
 c         ---ggに降伏関数の前のステップの値を入れる
           gg = dsqrt(1.d0/2.d0)*stno + eta_dp*emean
-     &      - xi_dp*dsqrt(2.d0/3.d0)*(yld +hrdtmp)
+     &      - xi_dp*(yld +hrdtmp)
 c         ---Dgに降伏関数の微分の前のステップの値を入れる
-          Dg = -2.d0*vmu 
-     &        -vkp*eta_dp*etabar_dp
-     &        -xi_dp*xi_dp*dhdtmp
+          Dg = -vmu 
+     &         -vkp*eta_dp*etabar_dp
+     &         -xi_dp*xi_dp*dhdtmp
 c
           deltag = deltag -gg/Dg
 c         --- check convergence
-          alptmp = alpeg +xi_dp*deltag
+          alptmp = alpeg + xi_dp*deltag
 c
 c         --- デバッグ用出力（iteration毎に整理）
           if(it.eq.1) then
@@ -205,14 +205,17 @@ c     --- outward unit normal vector in stress space
 c
 c     --- compute the plastic strain et.al.
         etrs = str(1,1) +str(2,2) +str(3,3)
+c    8.109に基づく偏差ひずみのアップデート        
         plstrg(:,:) = plstrg(:,:) 
-     &                +dsqrt(2.d0)*deltag*oun(:,:)
-     &                +etabar_dp*deltag*oun(:,:)*DELTA(:,:)/3.d0
+     &              + deltag*(
+     &              + oun(:,:)*dsqrt(1.d0/2.d0)     
+     &              + etabar_dp*DELTA(:,:)/3.d0
+     &              ) !ok
 
 
         sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:) !ok
      &            +((etrs/3.d0) - vkp*etabar_dp*deltag)*DELTA(:,:)!ok
-c c　以上は大丈夫
+c
 
 
 c     --- update consititutive tensor: "ctens"

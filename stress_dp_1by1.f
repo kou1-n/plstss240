@@ -7,8 +7,11 @@ c
       implicit double precision(a-h,o-z)
 c
       dimension prope(20)
+c
+c     --- common for tracking loading step and element info ---
+      common /debug_info/ nel_current, ig_current, lstep_current
       dimension sts(3,3),stn(3,3)
-      dimension str(3,3),stry(3,3),seta(3,3),
+      dimension str(3,3),stry(3,3),
      &          sig(3,3),oun(3,3),sd(3,3),eel(3,3),
      &          plstrg(3,3)
       dimension ctens(3,3,3,3)
@@ -24,7 +27,7 @@ c ***** Load Deformation Histories *************************************
       do ii=1,3
         do jj=1,3
           kk = kk+1
-          plstrg(jj,ii) = ehist(kk)
+          plstrg(jj,ii) = ehist(kk)!塑性ひずみテンソルε^p
         enddo
       enddo
 c     移動硬化は使用しない（等方硬化のみ）
@@ -67,26 +70,25 @@ c ***** Initialization *************************************************
       ctens = 0.d0 ! ctens(:,:,:,:) = 0.d0
 c
 c   === Deviatoric Stress => Trial Stress ===
+c   emean:静水圧成分（スカラー）
       emean = (str(1,1) +str(2,2) +str(3,3))/3.d0
 c
       stry = 2.d0*vmu*(str -emean*DELTA -plstrg)
-      seta = stry
 c
       stno = 0.d0
       do jj=1,3
         do ii=1,3
-          stno = stno +seta(ii,jj)**2
+          stno = stno +stry(ii,jj)**2
         enddo
       enddo
       stno = dsqrt(stno)
 c
 c  === Compute Hardening Function & Yield Function ===
-c Voce型の硬化則を用いるが，パラメータで線形硬化則化する
       hard = hpd*(hk*alpeg
      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
 c
-      ftreg = stno + dsqrt(2.d0/3.d0)*eta_dp*emean 
-     &      - xi_dp*dsqrt(2.d0/3.d0)*(yld +hard)
+      ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*emean 
+     &      - xi_dp*(yld +hard)
 c
 c  ===== PLASTIC CASE
 c          determine the Lagrange multiplier by N.R. iteration =====
@@ -100,7 +102,6 @@ c
 c     --- compute "\Delta gamma" by N.R. iteration
 c                       ( Box 3.1. step 2 )
         do 200 it=1,itrmax
-          alpd = alptmp -alpeg
 c
 c         --- K(\alpha^{(n)}_{n+1}) -\sigma_Y
           hrdtmp = hpd*(hk*alptmp
@@ -110,37 +111,99 @@ c         --- K'(\alpha^{(n)}_{n+1})
      &            +hpb*(hpa -yld)*dexp(-hpb*alptmp))
 c
 c         ---ggに降伏関数の前のステップの値を入れる
-          gg = stno + dsqrt(2.d0/3.d0)*eta_dp*emean
+          gg = dsqrt(1.d0/2.d0)*stno + eta_dp*emean
      &      - xi_dp*dsqrt(2.d0/3.d0)*(yld +hrdtmp)
 c         ---Dgに降伏関数の微分の前のステップの値を入れる
           Dg = -2.d0*vmu 
-     &        -dsqrt(2.d0/3.d0)*vkp*eta_dp*etabar_dp
-     &        -xi_dp*xi_dp*dsqrt(2.d0/3.d0)*dhdtmp
+     &        -vkp*eta_dp*etabar_dp
+     &        -xi_dp*xi_dp*dhdtmp
 c
           deltag = deltag -gg/Dg
-          alptmp = alpeg +xi_dp*dsqrt(2.d0/3.d0)*deltag
+c         --- check convergence
+          alptmp = alpeg +xi_dp*deltag
 c
+c         --- デバッグ用出力（iteration毎に整理）
+          if(it.eq.1) then
+            write(*,*)
+            write(*,'(A)') 
+     &        '========== Plastic Return Mapping Debug Info =========='
+            write(*,'(A,I3,A,I5,A,I3)') 
+     &        '  Loading Step: ', lstep_current,
+     &        '  Element: ', nel_current, 
+     &        '  Gauss Point: ', ig_current
+            write(*,'(A)') 
+     &        '--------------------------------------------------------'
+            write(*,'(A,E12.5)') '  Initial stno     = ', stno
+            write(*,'(A,E12.5)') '  Convergence tol  = ', ctol
+            write(*,'(A,E12.5)') '  vmu (shear mod)  = ', vmu
+            write(*,'(A,E12.5)') '  vkp (bulk mod)   = ', vkp
+            write(*,'(A,E12.5)') '  eta_dp           = ', eta_dp
+            write(*,'(A,E12.5)') '  etabar_dp        = ', etabar_dp
+            write(*,'(A,E12.5)') '  xi_dp            = ', xi_dp
+            write(*,'(A)') 
+     &        '--------------------------------------------------------'
+          endif
+c
+          write(*,'(A,I3,A)') '  Iter[', it, ']:'
+          write(*,'(A,E12.5,A,E12.5)') 
+     &      '    gg=', gg, '  Dg=', Dg
+          write(*,'(A,E12.5,A,E12.5)') 
+     &      '    gg/Dg=', gg/Dg, '  |gg/Dg|=', dabs(gg/Dg)
+          write(*,'(A,E12.5,A,E12.5)') 
+     &      '    deltag=', deltag, '  alptmp=', alptmp
+          write(*,'(A,E12.5,A,E12.5)') 
+     &      '    hrdtmp=', hrdtmp, '  dhdtmp=', dhdtmp
 c
           if( dabs(gg/Dg).lt.ctol) then
+            write(*,'(A,I3,A)') 
+     &        '  --> Converged at iteration ', it, ' !'
+            write(*,'(A)') 
+     &        '========================================================'
+            write(*,*)
             GOTO 210
           endif
   200   continue
 c
 c     --- error section: Failed to compute "Delta gamma"
+        write(*,*)
+        write(*,'(A)') 
+     &    '********************************************************'
+        write(*,'(A)') 
+     &    '**** ERROR: Plastic Return Mapping Failed (ierror=17) *'
+        write(*,'(A)') 
+     &    '********************************************************'
+        write(*,'(A,I3,A,I5,A,I3)') 
+     &    '  Loading Step: ', lstep_current,
+     &    '  Element: ', nel_current, 
+     &    '  Gauss Point: ', ig_current
+        write(*,'(A,I3)') '  Total iterations attempted: ', itrmax
+        write(*,'(A)') '  Final convergence status:'
+        write(*,'(A,E12.5)') '    Final gg       = ', gg
+        write(*,'(A,E12.5)') '    Final Dg       = ', Dg
+        if(dabs(Dg).gt.1.0d-20) then
+          write(*,'(A,E12.5)') '    Final gg/Dg    = ', gg/Dg
+          write(*,'(A,E12.5)') '    Final |gg/Dg|  = ', dabs(gg/Dg)
+        else
+          write(*,'(A)') '    WARNING: Dg is nearly zero!'
+        endif
+        write(*,'(A,E12.5)') '    Required tol   = ', ctol
+        write(*,'(A,E12.5)') '    Final deltag   = ', deltag
+        write(*,'(A,E12.5)') '    Final alptmp   = ', alptmp
+        write(*,'(A)') 
+     &    '********************************************************'
+        write(*,*)
         ierror = 17
         RETURN
 c
   210   CONTINUE
 c     --- update equivalent plastic strain "alpha"
         alptmp = alpeg
-        alpeg = alpeg +xi_dp*dsqrt(2.d0/3.d0)*deltag
+        alpeg = alpeg +xi_dp*deltag
 c
 c     --- outward unit normal vector in stress space
-        oun(:,:) = seta(:,:)/stno
+        oun(:,:) = stry(:,:)/stno
 c
 c     --- compute the plastic strain et.al.
-        alpd = alpeg -alptmp
-c
         etrs = str(1,1) +str(2,2) +str(3,3)
         plstrg(:,:) = plstrg(:,:) 
      &                +dsqrt(2.d0)*deltag*oun(:,:)

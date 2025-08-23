@@ -77,6 +77,7 @@ c
       common /cntrl/ nstep,istart,iarc,itrobj,incomp
       common /tvalu/ ctol,stol,switch
       common /print/ lpstp,luprt,lfprt,lnprt,lsprt,lbprt
+      common /debug_info/ nel_current, ig_current, lstep_current
 c
 c **********************************************************************
       arc = 0.d0
@@ -205,6 +206,8 @@ c ***************************************
       do 1000 in=l_beg,l_end
 c
         WRITE(*,8001) in,l_end
+c       --- Set current loading step for debug ---
+        lstep_current = in
 c
 c     ----- Control Loading Parameter -----
         df = finc(in)

@@ -29,8 +29,10 @@ c
       dimension histi(50)
 c
       common /tvalu/ ctol,stol
+      common /debug_info/ nel_current, ig_current, lstep_current
 c **********************************************************************
-      itrmax = 20
+c　収束が悪いのでitrmaxを増やした2025年8月23日
+      itrmax = 50
 c
       wg(1) = 1.d0
       wg(2) = 1.d0
@@ -188,6 +190,9 @@ c            ! MATYPE=4 uses the new stress_dp routine
      &                   ctens,
      &                  ierror )
           elseif(MATYPE.eq.5) then
+c           --- Set debug info for current element and gauss point ---
+            nel_current = nel
+            ig_current = ig
             CALL stress_dp_1by1(itrmax, idepg,
      &                   prope,   sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,

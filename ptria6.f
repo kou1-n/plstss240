@@ -95,7 +95,7 @@ c   === Compute Local Stresses (Drucker-Prager) ===
      &               prope,   sig,   str, ehist,
      &                ctol,  vons, e_dns, p_dns,
      &               ctens,
-     &              ierror )
+     &              ierror,  itr , histi )
         if(ierror.ne.0) RETURN
 c       write(*,*) nel,ig
 c       write(*,*) sig

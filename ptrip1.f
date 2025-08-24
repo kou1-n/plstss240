@@ -142,7 +142,7 @@ c   === Compute Averaged Volumetoric Stresses ===
      &             prope,  sig,   str, ehist,
      &              ctol,  vons, e_dns, p_dns,
      &             ctens,
-     &            ierror )
+     &            ierror,  itr , histi )
       if(ierror.ne.0) RETURN
 c
       smean = ( sig(1,1) +sig(2,2) +sig(3,3) )/3.d0
@@ -217,7 +217,7 @@ c   === Compute Local Stresses (Drucker-Prager) ===
      &               prope,  sig,   str, ehist,
      &                ctol,  vons, e_dns, p_dns,
      &               ctens,
-     &              ierror )
+     &              ierror,  itr , histi )
         if(ierror.ne.0) RETURN
 c
 c   === Clean up Volumetric Part ===

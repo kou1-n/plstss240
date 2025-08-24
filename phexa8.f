@@ -188,7 +188,7 @@ c            ! MATYPE=4 uses the new stress_dp routine
      &                   prope,   sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
-     &                  ierror )
+     &                  ierror,  itr , histi )
           elseif(MATYPE.eq.5) then
 c           --- Set debug info for current element and gauss point ---
             nel_current = nel

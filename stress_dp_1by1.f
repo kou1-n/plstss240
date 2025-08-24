@@ -53,15 +53,15 @@ c    --- plastic parameters
       hpd = prope(15)
       phi_dp = prope(16)
       psi_dp = prope(17)
-c     eta_dp   = 6.d0 * sin(phi_dp) / ( dsqrt(3.d0) * 
-c    &                                 (3.d0 - sin(phi_dp)) )
-c     xi_dp    = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) *
-c    &                                 (3.d0 - sin(phi_dp)) )
-c     etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
-c    &                                  (3.d0 - sin(psi_dp)) )
-      eta_dp   = 0.d0
-      xi_dp    = 1.d0
-      etabar_dp = 0.d0
+      eta_dp   = 6.d0 * sin(phi_dp) / ( dsqrt(3.d0) * 
+     &                                 (3.d0 - sin(phi_dp)) )
+      xi_dp    = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) *
+     &                                 (3.d0 - sin(phi_dp)) )
+      etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
+     &                                  (3.d0 - sin(psi_dp)) )
+      ! eta_dp   = 1.d0
+      ! xi_dp    = 1.d0
+      ! etabar_dp = 1.d0
 c
 c    --- thermal parameters
       row = prope(3)
@@ -73,8 +73,10 @@ c ***** Initialization *************************************************
       ctens = 0.d0 ! ctens(:,:,:,:) = 0.d0
 c
 c   === Deviatoric Stress => Trial Stress ===
-c   emean:静水圧成分（スカラー）
-      emean = (str(1,1) +str(2,2) +str(3,3))/3.d0 !ε_v_n+1^tr
+c   体積ひずみ（スカラー）（trace of strain tensor）
+      etrs = str(1,1) +str(2,2) +str(3,3)  !ε_v_n+1^tr = tr(ε_n+1)
+c   emean:体積ひずみの平均成分（スカラー）= etrs/3
+      emean = etrs/3.d0
 c
       stry = 2.d0*vmu*(str -emean*DELTA -plstrg) !p366 s_n+1^tr
 c     2G(ε_n+1 - ε_v_n+1^tr*I/3 - ε^p_n)
@@ -90,7 +92,7 @@ c  === Compute Hardening Function & Yield Function ===
       hard = hpd*(hk*alpeg
      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
 c
-      ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*emean 
+      ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*vkp*emean 
      &      - xi_dp*(yld +hard)
 c
 c  ===== PLASTIC CASE
@@ -116,7 +118,7 @@ c
 c         ---gg(8.117 p363)
           gg = dsqrt(1.d0/2.d0)*stno 
      &       - vmu*deltag
-     &       + eta_dp*(emean - vkp*etabar_dp*deltag)
+     &       + eta_dp*(vkp*emean - vkp*etabar_dp*deltag)
      &       - xi_dp*(yld +hrdtmp)
 c         ---ggのdeltagによる偏微分
           Dg = -vmu 
@@ -209,7 +211,7 @@ c     --- outward unit normal vector in stress space
         oun(:,:) = stry(:,:)/stno
 c
 c     --- compute the plastic strain et.al.
-        etrs = str(1,1) +str(2,2) +str(3,3)
+c       etrs already computed at the beginning
 c    8.109に基づく偏差ひずみのアップデート        
         plstrg(:,:) = plstrg(:,:) 
      &              + deltag*(
@@ -219,7 +221,7 @@ c    8.109に基づく偏差ひずみのアップデート
 
 
         sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:) !ok
-     &            +(vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)!ok
+     &            +(vkp*emean - vkp*etabar_dp*deltag)*DELTA(:,:)!ok
 c       p_n+1^tr = vkp*ε_v_n+1^tr = vkp*etrs
 
 
@@ -258,9 +260,9 @@ c          Identify the Trial Stress as Actual One =====
       else
         idepg = 0
 c
-        etrs = str(1,1) +str(2,2) +str(3,3)
+c       etrs already computed at the beginning
 c       if(dabs(etrs).le.1.0d-16) etrs = 0.d0
-        sig(:,:) = stry(:,:) +vkp*etrs*DELTA(:,:)
+        sig(:,:) = stry(:,:) +vkp*emean*DELTA(:,:)
 c       write(*,*) etrs,ctol
 c       write(*,*) vkp*etrs,'aaa'
 c

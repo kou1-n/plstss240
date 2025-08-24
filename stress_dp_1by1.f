@@ -92,7 +92,7 @@ c  === Compute Hardening Function & Yield Function ===
       hard = hpd*(hk*alpeg
      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
 c
-      ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*vkp*emean 
+      ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*vkp*etrs 
      &      - xi_dp*(yld +hard)
 c
 c  ===== PLASTIC CASE
@@ -118,7 +118,7 @@ c
 c         ---gg(8.117 p363)
           gg = dsqrt(1.d0/2.d0)*stno 
      &       - vmu*deltag
-     &       + eta_dp*(vkp*emean - vkp*etabar_dp*deltag)
+     &       + eta_dp*(vkp*etrs - vkp*etabar_dp*deltag)
      &       - xi_dp*(yld +hrdtmp)
 c         ---ggのdeltagによる偏微分
           Dg = -vmu 
@@ -221,7 +221,7 @@ c    8.109に基づく偏差ひずみのアップデート
 
 
         sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:) !ok
-     &            +(vkp*emean - vkp*etabar_dp*deltag)*DELTA(:,:)!ok
+     &            +(vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)!ok
 c       p_n+1^tr = vkp*ε_v_n+1^tr = vkp*etrs
 
 
@@ -262,7 +262,7 @@ c          Identify the Trial Stress as Actual One =====
 c
 c       etrs already computed at the beginning
 c       if(dabs(etrs).le.1.0d-16) etrs = 0.d0
-        sig(:,:) = stry(:,:) +vkp*emean*DELTA(:,:)
+        sig(:,:) = stry(:,:) +vkp*etrs*DELTA(:,:)
 c       write(*,*) etrs,ctol
 c       write(*,*) vkp*etrs,'aaa'
 c

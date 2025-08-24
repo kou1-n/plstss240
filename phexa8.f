@@ -184,7 +184,7 @@ c            ! MATYPE=4 uses the new stress_dp routine
      &                   ctens,
      &                  ierror, itr, histi )
           elseif(MATYPE.eq.4) then
-            CALL stress_dp(itrmax, idepg,
+            CALL stress_dp_bn(itrmax, idepg,
      &                   prope,   sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,

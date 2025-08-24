@@ -1,4 +1,4 @@
-       subroutine stress_dp_1by1(itrmax, idepg,
+       subroutine stress_dp_rm(itrmax, idepg,
      &                   prope,  sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,

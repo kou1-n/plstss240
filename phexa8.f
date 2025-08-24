@@ -193,7 +193,7 @@ c            ! MATYPE=4 uses the new stress_dp routine
 c           --- Set debug info for current element and gauss point ---
             nel_current = nel
             ig_current = ig
-            CALL stress_dp_1by1(itrmax, idepg,
+            CALL stress_dp_rm(itrmax, idepg,
      &                   prope,   sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,

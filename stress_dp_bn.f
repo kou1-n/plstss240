@@ -2,7 +2,7 @@
      &                   prope,  sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
-     &                  ierror )
+     &                  ierror,  itr , histi )
 c
       implicit double precision(a-h,o-z)
 c
@@ -16,6 +16,13 @@ c     --- common for tracking loading step and element info ---
      &          plstrg(3,3)
       dimension ctens(3,3,3,3)
       dimension ehist(20)
+      dimension histi(50)
+c
+c   --- Block Newton method variables ---
+      integer n,m,NP,MP
+      PARAMETER(MP=20,NP=20)
+      REAL*8 a(NP,NP),b(NP,MP),ai(NP,NP),c(NP,NP),x(NP,MP),bi(NP,MP)
+      REAL*8 deltagi, alpegi, R1, R2
 c
       common /fnctn/ DELTA(3,3),EPSLN(3,3,3),FIT(3,3,3,3),DTENS(3,3,3,3)
 c **********************************************************************
@@ -95,39 +102,87 @@ c
       ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*vkp*etrs 
      &      - xi_dp*(yld +hard)
 c
-c  ===== PLASTIC CASE
-c          determine the Lagrange multiplier by N.R. iteration =====
+c  ===== PLASTIC CASE - Block Newton Method =====
       if(ftreg.gt.0.d0) then
-c             write(*,*) 1
         idepg = 1
-c     --- initilization ( Box 3.1. step 1 )
-        deltag = 0.d0
-        alptmp = alpeg
 c
-c     --- compute "\Delta gamma" by N.R. iteration
-c                       ( Box 3.1. step 2 )
+c     --- Initialize for Block Newton method ---
+        if(itr==1) then
+c         --- First global iteration: initialize ---
+          deltag = 0.d0
+          alptmp = alpeg
+        else
+c         --- Subsequent iterations: use previous values ---
+          deltagi = histi(1)  ! Previous iteration deltag
+          alpegi  = histi(2)  ! Previous iteration alpeg
+          deltag  = deltagi
+          alptmp  = alpegi
+        endif
+c
+c     --- Block Newton iteration for 2-variable system ---
         do 200 it=1,itrmax
 c
-c         --- K(\alpha^{(n)}_{n+1}) -\sigma_Y
+c         --- Update hardening function and its derivative ---
           hrdtmp = hpd*(hk*alptmp
      &            +(hpa -yld)*(1.d0 -dexp(-hpb*alptmp)))
-c         --- K'(\alpha^{(n)}_{n+1})
           dhdtmp = hpd*(hk
      &            +hpb*(hpa -yld)*dexp(-hpb*alptmp))
 c
-c         ---gg(8.117 p363)
-          gg = dsqrt(1.d0/2.d0)*stno 
+c         --- Residual functions for 2-variable system ---
+c         R1: Consistency condition (yield function = 0)
+          R1 = dsqrt(1.d0/2.d0)*stno 
      &       - vmu*deltag
      &       + eta_dp*(vkp*etrs - vkp*etabar_dp*deltag)
      &       - xi_dp*(yld +hrdtmp)
-c         ---ggのdeltagによる偏微分
-          Dg = -vmu 
-     &         -eta_dp*vkp*etabar_dp
-     &         -xi_dp*xi_dp*dhdtmp
 c
-          deltag = deltag -gg/Dg
-c         --- check convergence
-          alptmp = alpeg + xi_dp*deltag
+c         R2: Plastic strain evolution (α = α₀ + ξ*Δγ)  
+          R2 = alptmp - alpeg - xi_dp*deltag
+c
+c         --- Setup 2×2 Jacobian matrix ---
+c         Initialize matrices
+          a = 0.d0
+          x = 0.d0
+          ai = 0.d0
+          c = 0.d0
+          n = 2
+          m = 1
+c
+c         ∂R1/∂deltag
+          a(1,1) = -vmu - eta_dp*vkp*etabar_dp
+c         ∂R1/∂alpeg  
+          a(1,2) = -xi_dp*dhdtmp
+c         ∂R2/∂deltag
+          a(2,1) = -xi_dp
+c         ∂R2/∂alpeg
+          a(2,2) = 1.d0
+c
+c         --- Setup RHS vector ---
+          b(1,1) = -R1
+          b(2,1) = -R2
+c
+c         --- Solve linear system: A * Δx = b ---
+c         Copy matrices for solving
+          do 203 l=1,n
+            do 201 k=1,n
+              ai(k,l)=a(k,l)
+  201       continue
+            do 202 k=1,m
+              x(l,k)=b(l,k)
+  202       continue
+  203     continue
+c
+c         --- Gauss elimination with partial pivoting ---
+          call gauss_elim(ai,x,n,m)
+c
+c         --- Update variables ---
+          deltag = deltag + x(1,1)  ! Δγ update
+          alptmp = alptmp + x(2,1)  ! α update
+c
+c         --- Check convergence ---
+          residual_norm = dsqrt(R1*R1 + R2*R2)
+          if(residual_norm.lt.ctol) then
+            GOTO 210
+          endif
 c
 c         --- デバッグ用出力（iteration毎に整理）
 c         if(it.eq.1) then
@@ -151,24 +206,11 @@ c           write(*,'(A)')
 c    &        '--------------------------------------------------------'
 c         endif
 c
-c         write(*,'(A,I3,A)') '  Iter[', it, ']:'
-c         write(*,'(A,E12.5,A,E12.5)') 
-c    &      '    gg=', gg, '  Dg=', Dg
-c         write(*,'(A,E12.5,A,E12.5)') 
-c    &      '    gg/Dg=', gg/Dg, '  |gg/Dg|=', dabs(gg/Dg)
-c         write(*,'(A,E12.5,A,E12.5)') 
-c    &      '    deltag=', deltag, '  alptmp=', alptmp
-c         write(*,'(A,E12.5,A,E12.5)') 
-c    &      '    hrdtmp=', hrdtmp, '  dhdtmp=', dhdtmp
-c
-          if( dabs(gg/Dg).lt.ctol) then
-c           write(*,'(A,I3,A)') 
-c    &        '  --> Converged at iteration ', it, ' !'
-c           write(*,'(A)') 
-c    &        '======================================================='
-c           write(*,*)
-            GOTO 210
-          endif
+c         --- Debug output (Block Newton) ---
+c         write(*,'(A,I3,A,2E12.5)') '  BN Iter[', it, ']:',
+c    &      deltag, alptmp
+c         write(*,'(A,2E12.5)') '    Residuals:', R1, R2  
+c         write(*,'(A,E12.5)') '    ||R||:', residual_norm
   200   continue
 c
 c     --- error section: Failed to compute "Delta gamma"
@@ -332,8 +374,62 @@ c ***** Store Deformation Histories ************************************
       enddo
 c     移動硬化変数は保存しない（使用しないため）
 c
+c ***** Store iteration history for Block Newton method ***************
+      histi(1) = deltag
+      histi(2) = alpeg
 c
 c **********************************************************************
 c **********************************************************************
       RETURN
       END
+c
+c ***** Gauss elimination subroutine for Block Newton method *********
+      SUBROUTINE gauss_elim(a,b,n,m)
+      implicit double precision(a-h,o-z)
+      dimension a(20,20),b(20,20)
+c
+c     Forward elimination with partial pivoting
+      do 30 k=1,n-1
+c       Find pivot
+        imax = k
+        do 10 i=k+1,n
+          if(dabs(a(i,k)).gt.dabs(a(imax,k))) imax = i
+ 10     continue
+c       Swap rows if needed
+        if(imax.ne.k) then
+          do 11 j=k,n
+            temp = a(k,j)
+            a(k,j) = a(imax,j)
+            a(imax,j) = temp
+ 11       continue
+          do 12 j=1,m
+            temp = b(k,j)
+            b(k,j) = b(imax,j)
+            b(imax,j) = temp
+ 12       continue
+        endif
+c       Eliminate column
+        do 20 i=k+1,n
+          factor = a(i,k)/a(k,k)
+          do 21 j=k+1,n
+            a(i,j) = a(i,j) - factor*a(k,j)
+ 21       continue
+          do 22 j=1,m
+            b(i,j) = b(i,j) - factor*b(k,j)
+ 22       continue
+ 20     continue
+ 30   continue
+c
+c     Back substitution
+      do 40 j=1,m
+        do 50 i=n,1,-1
+          sum = b(i,j)
+          do 51 k=i+1,n
+            sum = sum - a(i,k)*b(k,j)
+ 51       continue
+          b(i,j) = sum/a(i,i)
+ 50     continue
+ 40   continue
+c
+      return
+      end

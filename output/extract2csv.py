@@ -7,7 +7,8 @@
 - 相当塑性ひずみ：塑性変形の累積量
 - yy方向の応力・ひずみ：y軸方向の垂直応力・ひずみ成分
 
-Usage: python extract2csv.py input.cml output.csv
+Usage: python extract2csv.py input.cml [output.csv]
+       出力ファイル名を省略した場合、入力ファイル名_YYYYMMDD_HHMMSS.csv として保存
 
 The script reads /ELMTL/ blocks and outputs rows:
     step, element_id, von, eps, yystress, yystrain
@@ -15,6 +16,8 @@ in CSV format.
 """
 import sys
 import csv
+import os
+from datetime import datetime
 
 
 def parse_res(filename):
@@ -89,13 +92,28 @@ def main():
     """
     メイン関数：コマンドライン引数を処理してCSVファイルを出力
     """
-    # コマンドライン引数のチェック（入力ファイルと出力ファイルの2つが必要）
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} input.cml output.csv")
+    # コマンドライン引数のチェック（入力ファイルは必須、出力ファイルは任意）
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
+        print(f"Usage: {sys.argv[0]} input.cml [output.csv]")
+        print("       出力ファイル名を省略した場合、入力ファイル名_YYYYMMDD_HHMMSS.csv として保存")
         sys.exit(1)
     
-    # 入力ファイル名と出力ファイル名を取得
-    src, dest = sys.argv[1], sys.argv[2]
+    # 入力ファイル名を取得
+    src = sys.argv[1]
+    
+    # 出力ファイル名を決定
+    if len(sys.argv) == 3:
+        # 出力ファイル名が指定された場合
+        dest = sys.argv[2]
+    else:
+        # 出力ファイル名が省略された場合、タイムスタンプ付きの名前を生成
+        # 入力ファイル名から拡張子を除去
+        base_name = os.path.splitext(os.path.basename(src))[0]
+        # 現在時刻のタイムスタンプを生成（YYYYMMDD_HHMMSS形式）
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # 出力ファイル名を生成
+        dest = f"{base_name}_{timestamp}.csv"
+        print(f"出力ファイル: {dest}")
     
     # cmlファイルを解析してデータを抽出
     data = parse_res(src)
@@ -107,6 +125,8 @@ def main():
         writer.writerow(['step', 'element', 'von', 'eps', 'yystress', 'yystrain'])
         # データ行を書き込み（各タプルが1行になる）
         writer.writerows(data)
+    
+    print(f"データ抽出完了: {len(data)}行のデータを {dest} に保存しました")
 
 
 if __name__ == '__main__':

@@ -74,10 +74,10 @@ c ***** Initialization *************************************************
 c
 c   === Deviatoric Stress => Trial Stress ===
 c   emean:静水圧成分（スカラー）
-      emean = (str(1,1) +str(2,2) +str(3,3))/3.d0 !p_n+1^tr
+      emean = (str(1,1) +str(2,2) +str(3,3))/3.d0 !ε_v_n+1^tr
 c
       stry = 2.d0*vmu*(str -emean*DELTA -plstrg) !p366 s_n+1^tr
-c
+c     2G(ε_n+1 - ε_v_n+1^tr*I/3 - ε^p_n)
       stno = 0.d0
       do jj=1,3
         do ii=1,3
@@ -128,75 +128,75 @@ c         --- check convergence
           alptmp = alpeg + xi_dp*deltag
 c
 c         --- デバッグ用出力（iteration毎に整理）
-          if(it.eq.1) then
-            write(*,*)
-            write(*,'(A)') 
-     &        '========== Plastic Return Mapping Debug Info =========='
-            write(*,'(A,I3,A,I5,A,I3)') 
-     &        '  Loading Step: ', lstep_current,
-     &        '  Element: ', nel_current, 
-     &        '  Gauss Point: ', ig_current
-            write(*,'(A)') 
-     &        '--------------------------------------------------------'
-            write(*,'(A,E12.5)') '  Initial stno     = ', stno
-            write(*,'(A,E12.5)') '  Convergence tol  = ', ctol
-            write(*,'(A,E12.5)') '  vmu (shear mod)  = ', vmu
-            write(*,'(A,E12.5)') '  vkp (bulk mod)   = ', vkp
-            write(*,'(A,E12.5)') '  eta_dp           = ', eta_dp
-            write(*,'(A,E12.5)') '  etabar_dp        = ', etabar_dp
-            write(*,'(A,E12.5)') '  xi_dp            = ', xi_dp
-            write(*,'(A)') 
-     &        '--------------------------------------------------------'
-          endif
+c         if(it.eq.1) then
+c           write(*,*)
+c           write(*,'(A)') 
+c    &        '========== Plastic Return Mapping Debug Info =========='
+c           write(*,'(A,I3,A,I5,A,I3)') 
+c    &        '  Loading Step: ', lstep_current,
+c    &        '  Element: ', nel_current, 
+c    &        '  Gauss Point: ', ig_current
+c           write(*,'(A)') 
+c    &        '--------------------------------------------------------'
+c           write(*,'(A,E12.5)') '  Initial stno     = ', stno
+c           write(*,'(A,E12.5)') '  Convergence tol  = ', ctol
+c           write(*,'(A,E12.5)') '  vmu (shear mod)  = ', vmu
+c           write(*,'(A,E12.5)') '  vkp (bulk mod)   = ', vkp
+c           write(*,'(A,E12.5)') '  eta_dp           = ', eta_dp
+c           write(*,'(A,E12.5)') '  etabar_dp        = ', etabar_dp
+c           write(*,'(A,E12.5)') '  xi_dp            = ', xi_dp
+c           write(*,'(A)') 
+c    &        '--------------------------------------------------------'
+c         endif
 c
-          write(*,'(A,I3,A)') '  Iter[', it, ']:'
-          write(*,'(A,E12.5,A,E12.5)') 
-     &      '    gg=', gg, '  Dg=', Dg
-          write(*,'(A,E12.5,A,E12.5)') 
-     &      '    gg/Dg=', gg/Dg, '  |gg/Dg|=', dabs(gg/Dg)
-          write(*,'(A,E12.5,A,E12.5)') 
-     &      '    deltag=', deltag, '  alptmp=', alptmp
-          write(*,'(A,E12.5,A,E12.5)') 
-     &      '    hrdtmp=', hrdtmp, '  dhdtmp=', dhdtmp
+c         write(*,'(A,I3,A)') '  Iter[', it, ']:'
+c         write(*,'(A,E12.5,A,E12.5)') 
+c    &      '    gg=', gg, '  Dg=', Dg
+c         write(*,'(A,E12.5,A,E12.5)') 
+c    &      '    gg/Dg=', gg/Dg, '  |gg/Dg|=', dabs(gg/Dg)
+c         write(*,'(A,E12.5,A,E12.5)') 
+c    &      '    deltag=', deltag, '  alptmp=', alptmp
+c         write(*,'(A,E12.5,A,E12.5)') 
+c    &      '    hrdtmp=', hrdtmp, '  dhdtmp=', dhdtmp
 c
           if( dabs(gg/Dg).lt.ctol) then
-            write(*,'(A,I3,A)') 
-     &        '  --> Converged at iteration ', it, ' !'
-            write(*,'(A)') 
-     &        '========================================================'
-            write(*,*)
+c           write(*,'(A,I3,A)') 
+c    &        '  --> Converged at iteration ', it, ' !'
+c           write(*,'(A)') 
+c    &        '======================================================='
+c           write(*,*)
             GOTO 210
           endif
   200   continue
 c
 c     --- error section: Failed to compute "Delta gamma"
-        write(*,*)
-        write(*,'(A)') 
-     &    '********************************************************'
-        write(*,'(A)') 
-     &    '**** ERROR: Plastic Return Mapping Failed (ierror=17) *'
-        write(*,'(A)') 
-     &    '********************************************************'
-        write(*,'(A,I3,A,I5,A,I3)') 
-     &    '  Loading Step: ', lstep_current,
-     &    '  Element: ', nel_current, 
-     &    '  Gauss Point: ', ig_current
-        write(*,'(A,I3)') '  Total iterations attempted: ', itrmax
-        write(*,'(A)') '  Final convergence status:'
-        write(*,'(A,E12.5)') '    Final gg       = ', gg
-        write(*,'(A,E12.5)') '    Final Dg       = ', Dg
-        if(dabs(Dg).gt.1.0d-20) then
-          write(*,'(A,E12.5)') '    Final gg/Dg    = ', gg/Dg
-          write(*,'(A,E12.5)') '    Final |gg/Dg|  = ', dabs(gg/Dg)
-        else
-          write(*,'(A)') '    WARNING: Dg is nearly zero!'
-        endif
-        write(*,'(A,E12.5)') '    Required tol   = ', ctol
-        write(*,'(A,E12.5)') '    Final deltag   = ', deltag
-        write(*,'(A,E12.5)') '    Final alptmp   = ', alptmp
-        write(*,'(A)') 
-     &    '********************************************************'
-        write(*,*)
+c       write(*,*)
+c       write(*,'(A)') 
+c    &    '********************************************************'
+c       write(*,'(A)') 
+c    &    '**** ERROR: Plastic Return Mapping Failed (ierror=17) *'
+c       write(*,'(A)') 
+c    &    '********************************************************'
+c       write(*,'(A,I3,A,I5,A,I3)') 
+c    &    '  Loading Step: ', lstep_current,
+c    &    '  Element: ', nel_current, 
+c    &    '  Gauss Point: ', ig_current
+c       write(*,'(A,I3)') '  Total iterations attempted: ', itrmax
+c       write(*,'(A)') '  Final convergence status:'
+c       write(*,'(A,E12.5)') '    Final gg       = ', gg
+c       write(*,'(A,E12.5)') '    Final Dg       = ', Dg
+c       if(dabs(Dg).gt.1.0d-20) then
+c         write(*,'(A,E12.5)') '    Final gg/Dg    = ', gg/Dg
+c         write(*,'(A,E12.5)') '    Final |gg/Dg|  = ', dabs(gg/Dg)
+c       else
+c         write(*,'(A)') '    WARNING: Dg is nearly zero!'
+c       endif
+c       write(*,'(A,E12.5)') '    Required tol   = ', ctol
+c       write(*,'(A,E12.5)') '    Final deltag   = ', deltag
+c       write(*,'(A,E12.5)') '    Final alptmp   = ', alptmp
+c       write(*,'(A)') 
+c    &    '********************************************************'
+c       write(*,*)
         ierror = 17
         RETURN
 c
@@ -219,8 +219,8 @@ c    8.109に基づく偏差ひずみのアップデート
 
 
         sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:) !ok
-     &            +((etrs/3.d0) - vkp*etabar_dp*deltag)*DELTA(:,:)!ok
-c
+     &            +(vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)!ok
+c       p_n+1^tr = vkp*ε_v_n+1^tr = vkp*etrs
 
 
 c     --- update consititutive tensor: "ctens"
@@ -253,7 +253,6 @@ c
           enddo
         enddo
 c
-c 以上は大丈夫0715_1745
 c  ===== ELASTIC CASE:
 c          Identify the Trial Stress as Actual One =====
       else

@@ -53,12 +53,15 @@ c    --- plastic parameters
       hpd = prope(15)
       phi_dp = prope(16)
       psi_dp = prope(17)
-      eta_dp   = 6.d0 * sin(phi_dp) / ( dsqrt(3.d0) * 
-     &                                 (3.d0 - sin(phi_dp)) )
-      xi_dp    = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) *
-     &                                 (3.d0 - sin(phi_dp)) )
-      etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
-     &                                  (3.d0 - sin(psi_dp)) )
+c     eta_dp   = 6.d0 * sin(phi_dp) / ( dsqrt(3.d0) * 
+c    &                                 (3.d0 - sin(phi_dp)) )
+c     xi_dp    = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) *
+c    &                                 (3.d0 - sin(phi_dp)) )
+c     etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
+c    &                                  (3.d0 - sin(psi_dp)) )
+      eta_dp   = 0.d0
+      xi_dp    = 1.d0
+      etabar_dp = 0.d0
 c
 c    --- thermal parameters
       row = prope(3)
@@ -71,7 +74,7 @@ c ***** Initialization *************************************************
 c
 c   === Deviatoric Stress => Trial Stress ===
 c   emean:静水圧成分（スカラー）
-      emean = (str(1,1) +str(2,2) +str(3,3))/3.d0
+      emean = (str(1,1) +str(2,2) +str(3,3))/3.d0 !p_n+1^tr
 c
       stry = 2.d0*vmu*(str -emean*DELTA -plstrg) !p366 s_n+1^tr
 c
@@ -110,12 +113,14 @@ c         --- K'(\alpha^{(n)}_{n+1})
           dhdtmp = hpd*(hk
      &            +hpb*(hpa -yld)*dexp(-hpb*alptmp))
 c
-c         ---ggに降伏関数の前のステップの値を入れる
-          gg = dsqrt(1.d0/2.d0)*stno + eta_dp*emean
-     &      - xi_dp*(yld +hrdtmp)
-c         ---Dgに降伏関数の微分の前のステップの値を入れる
+c         ---gg(8.117 p363)
+          gg = dsqrt(1.d0/2.d0)*stno 
+     &       - vmu*deltag
+     &       + eta_dp*(emean - vkp*etabar_dp*deltag)
+     &       - xi_dp*(yld +hrdtmp)
+c         ---ggのdeltagによる偏微分
           Dg = -vmu 
-     &         -vkp*eta_dp*etabar_dp
+     &         -eta_dp*vkp*etabar_dp
      &         -xi_dp*xi_dp*dhdtmp
 c
           deltag = deltag -gg/Dg
@@ -231,7 +236,7 @@ c
             do jj=1,3
               do ii=1,3
                 ctens(ii,jj,kk,ll)
-     &            = +2.d0*vmu*theta*( FIT(ii,jj,kk,ll)
+     &            =  2.d0*vmu*theta*( FIT(ii,jj,kk,ll)
      &                       -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
      &
      &              +2.d0*vmu*thetab*oun(ii,jj)*oun(kk,ll)

@@ -358,7 +358,7 @@ c         CALL CPU_TIME(  sec0)
      &                 epsln,   von,  fint,dhist0,dhist1,
      &                   eps,  pene,  eene,
      &                tene_e,dene_p,  temp, dtemp, tempd,
-     &                dndx_g, det_g,ctensg,
+     &                dndx_g, det_g,ctensg, g_norm,
      &                ierror, itr , histi0)
           if(ierror.ne.0) RETURN
 c         CALL CPU_TIME(  sec1)
@@ -421,7 +421,20 @@ c           fnorm = 1.d0
 c
           rbf = dsqrt(rnorm/fnorm)
           WRITE(*,8004) df,dfact,arc
-          WRITE(*,8003) dsqrt(rnorm),dsqrt(fnorm),rbf
+c
+c       --- Check if using Block Newton method (MATYPE=5) ---
+          isbnm = 0
+          do imat=1,lmat
+            if(matid(imat).eq.5) isbnm = 1
+          enddo
+c
+          if(isbnm.eq.1) then
+c         --- Extended output for Block Newton method ---
+            WRITE(*,8006) dsqrt(rnorm),dsqrt(fnorm),rbf,g_norm
+          else
+c         --- Standard output for other methods ---
+            WRITE(*,8003) dsqrt(rnorm),dsqrt(fnorm),rbf
+          endif
 c
           if(rbf.lt.ctol) then
             GOTO 1500
@@ -497,6 +510,10 @@ c
 c
  8005 FORMAT(5x,'##### Unloading has happened !! ',i3,' #####',/,
      &       8x,'Computation will REstart with elastic stiffness')
+c
+ 8006 FORMAT('      rnorm :',e12.5,', fnorm : ',e12.5,/,
+     &       '   ||Rf||/||F|| : ',e12.5,', ||Rg|| : ',e12.5,
+     &       ' [Block Newton]')
 c **********************************************************************
 c **********************************************************************
       RETURN

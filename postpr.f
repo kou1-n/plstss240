@@ -5,7 +5,7 @@
      &                   epsln,   von,  fint,dhist0,dhist1,
      &                     eps,  pene,  eene,
      &                  tene_e,dene_p,  temp, dtemp, tempd,
-     &                  dndx_g, det_g,ctensg,
+     &                  dndx_g, det_g,ctensg, g_norm,
      &                  ierror, itr , histi0  )
 c
       implicit double precision (a-h,o-z)
@@ -36,6 +36,7 @@ c
       dimension xe(3,8),ue(3,8)
       dimension prope(20)
       dimension finte(24)
+      dimension g_vals(ngaus)
 c
       common /basic/ nx,nelx,ndf,node,nsn,lmat,lang,ngaus
       common /cntrl/ nstep,istart,iarc,itrobj,incomp
@@ -52,6 +53,9 @@ c
       dtemp = 0.d0
 c     dtempe = 0.d0
       dene_p = 0.d0
+c
+c     Initialize yield residual norm
+      g_norm = 0.d0
 c
 c ****** Loop for ALL Elements *****************************************
       do 100 nel=1,nelx
@@ -181,9 +185,16 @@ c
      &                dhist0,dhist1,
      &                 p_ene, e_ene,tene_e,dene_p, tempe,
      &                 dtemp,dtempe,
-     &                dndx_g, det_g,ctensg,
+     &                dndx_g, det_g,ctensg, g_vals,
      &                ierror, itr , histi0 )
           if(ierror.ne.0) RETURN
+c
+c       --- Accumulate yield residual norm for BN method ---
+          if(MATYPE.eq.5) then
+            do ig=1,ngaus
+              g_norm = g_norm + g_vals(ig)**2
+            enddo
+          endif
 c
 c     --- /TTRA4/ 4-node Constant Strain Triangle
         elseif( melem(nel).eq.34 ) then
@@ -240,6 +251,11 @@ c       temp(nel) = tempe
 c       write(*,*) dtempe
 c
   100 continue
+c
+c ***** Compute the L2 norm of yield residuals for BN method *********
+      if(g_norm.gt.0.d0) then
+        g_norm = dsqrt(g_norm)
+      endif
 c
 c **********************************************************************
 c     do ne=1,ndf*nx

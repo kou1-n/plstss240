@@ -1,8 +1,18 @@
-       subroutine stress_dp_bn(itrmax, idepg,
+      subroutine stress_dp_bn(itrmax, idepg,
      &                   prope,  sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,
-     &                   ctens,
+     &                   ctens, g_val,
      &                  ierror,  itr , histi )
+c
+c **********************************************************************
+c     Block Newton method implementation for Drucker-Prager plasticity
+c     Based on: Yamamoto et al. (2021) Box 2 formulation
+c     
+c     Features:
+c     - 1-variable system (deltag only) since alpha = alpha0 + xi*deltag
+c     - No local iterations - uses global Block Newton approach
+c     - Pseudo stress correction for yield condition residual
+c **********************************************************************
 c
       implicit double precision(a-h,o-z)
 c
@@ -10,23 +20,20 @@ c
 c
 c     --- common for tracking loading step and element info ---
       common /debug_info/ nel_current, ig_current, lstep_current
-      dimension sts(3,3),stn(3,3)
+      
       dimension str(3,3),stry(3,3),
      &          sig(3,3),oun(3,3),sd(3,3),eel(3,3),
-     &          plstrg(3,3)
+     &          plstrg(3,3), psig(3,3), stri(3,3)
       dimension ctens(3,3,3,3)
-      dimension ehist(20)
-      dimension histi(50)
+      dimension ehist(20), histi(50)
 c
-c   --- Block Newton method variables ---
-      integer n,m,NP,MP
-      PARAMETER(MP=20,NP=20)
-      REAL*8 a(NP,NP),b(NP,MP),ai(NP,NP),c(NP,NP),x(NP,MP),bi(NP,MP)
-      REAL*8 deltagi, alpegi, R1, R2
+c     --- Block Newton variables (1-variable system for D-P) ---
+      REAL*8 deltag, alpeg_new, Dg
+      REAL*8 deltagi, alpegi, ftri
+      REAL*8 gg, xa(3,3)
 c
       common /fnctn/ DELTA(3,3),EPSLN(3,3,3),FIT(3,3,3,3),DTENS(3,3,3,3)
 c **********************************************************************
-c     write(*,*) 'stress'
 c
 c ***** Load Deformation Histories *************************************
       alpeg = ehist(1)
@@ -34,22 +41,42 @@ c ***** Load Deformation Histories *************************************
       do ii=1,3
         do jj=1,3
           kk = kk+1
-          plstrg(jj,ii) = ehist(kk)!塑性ひずみテンソルε^p
+          plstrg(jj,ii) = ehist(kk)
         enddo
       enddo
-c     移動硬化は使用しない（等方硬化のみ）
+c
+c     --- Load iteration history from previous global iteration ---
+      if(itr.gt.1) then
+        deltagi = histi(1)
+        alpegi  = histi(2)
+        ftri    = histi(3)  ! Previous yield function value
+        kk = 3
+        do jj=1,3
+          do ii=1,3
+            kk = kk+1
+            stri(ii,jj) = histi(kk)  ! Previous strain
+          enddo
+        enddo
+        do jj=1,3
+          do ii=1,3
+            kk = kk+1
+            xa(ii,jj) = histi(kk)  ! Previous xa (sensitivity)
+          enddo
+        enddo
+      else
+        deltagi = 0.d0
+        alpegi  = alpeg
+        ftri    = 0.d0
+        stri    = str
+        xa      = 0.d0
+      endif
 c
 c ***** Set Material Properties ****************************************
 c    --- elastic parameters
-c     --- Young modulus
       yng = prope(1)
-c     --- Poisson's ratio
       poi = prope(2)
-c     --- Lame const. 'mu' = shear modulus
       vmu = yng/(2.d0*(1.d0 +poi))
-c     --- Lame const. 'lamuda'
       vlm = poi*yng/((1.d0 +poi)*(1.d0 -2.d0*poi))
-c     --- Bulk modulus 'kappa'
       vkp = yng/(3.d0*(1.d0 -2.d0*poi))
 c    --- plastic parameters
       yld = prope(10)
@@ -66,214 +93,123 @@ c    --- plastic parameters
      &                                 (3.d0 - sin(phi_dp)) )
       etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
      &                                  (3.d0 - sin(psi_dp)) )
-      ! eta_dp   = 1.d0
-      ! xi_dp    = 1.d0
-      ! etabar_dp = 1.d0
-c
-c    --- thermal parameters
-      row = prope(3)
-      ccc = prope(4)
-      aaa = prope(5)
 c
 c ***** Initialization *************************************************
       deltag = 0.d0
-      ctens = 0.d0 ! ctens(:,:,:,:) = 0.d0
+      psig   = 0.d0
+      ctens  = 0.d0
+      ierror = 0
 c
-c   === Deviatoric Stress => Trial Stress ===
-c   体積ひずみ（スカラー）（trace of strain tensor）
-      etrs = str(1,1) +str(2,2) +str(3,3)  !ε_v_n+1^tr = tr(ε_n+1)
-c   emean:体積ひずみの平均成分（スカラー）= etrs/3
+c   === Compute Trial Elastic Stress ===
+      etrs = str(1,1) +str(2,2) +str(3,3)
       emean = etrs/3.d0
 c
-      stry = 2.d0*vmu*(str -emean*DELTA -plstrg) !p366 s_n+1^tr
-c     2G(ε_n+1 - ε_v_n+1^tr*I/3 - ε^p_n)
+c   Trial deviatoric stress
+      stry = 2.d0*vmu*(str -emean*DELTA -plstrg)
+c
+c   Norm of trial deviatoric stress
       stno = 0.d0
       do jj=1,3
         do ii=1,3
-          stno = stno +stry(ii,jj)**2 !試行のstryで作成したノルム
+          stno = stno +stry(ii,jj)**2
         enddo
       enddo
       stno = dsqrt(stno)
 c
+c   Unit normal
+      if(stno.gt.1.0d-16) then
+        oun(:,:) = stry(:,:)/stno
+      else
+        oun(:,:) = 0.d0
+      endif
+c
 c  === Compute Hardening Function & Yield Function ===
       hard = hpd*(hk*alpeg
      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
+      dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg))
 c
       ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*vkp*etrs 
      &      - xi_dp*(yld +hard)
 c
-c  ===== PLASTIC CASE - Block Newton Method =====
-      if(ftreg.gt.0.d0) then
+c  ===== PLASTIC CASE: Block Newton Method =====
+      if(ftreg.gt.-ctol) then
         idepg = 1
 c
-c     --- Initialize for Block Newton method ---
-        if(itr==1) then
-c         --- First global iteration: initialize ---
+        if(itr.eq.1) then
+c         --- First iteration: classical estimate ---
           deltag = 0.d0
-          alptmp = alpeg
+          alpeg_new = alpeg
+c         Compute Dg for storing xa (even in first iteration)
+          Dg = -vmu 
+     &         - eta_dp*vkp*etabar_dp
+     &         - xi_dp*xi_dp*dhard
         else
-c         --- Subsequent iterations: use previous values ---
-          deltagi = histi(1)  ! Previous iteration deltag
-          alpegi  = histi(2)  ! Previous iteration alpeg
-          deltag  = deltagi
-          alptmp  = alpegi
-        endif
+c         --- Block Newton update (1-variable system for D-P) ---
+c         Since α = α₀ + ξ*Δγ, we only need to solve for Δγ
+          alpegi = alpeg + xi_dp*deltagi
+          
+          hard_i = hpd*(hk*alpegi
+     &           +(hpa -yld)*(1.d0 -dexp(-hpb*alpegi)))
+          dhard_i = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpegi))
 c
-c     --- Block Newton iteration for 2-variable system ---
-        do 200 it=1,itrmax
+c         Residual: Yield function (similar to stress_dp_rm.f)
+          gg = dsqrt(1.d0/2.d0)*stno 
+     &       - vmu*deltagi
+     &       + eta_dp*(vkp*etrs - vkp*etabar_dp*deltagi)
+     &       - xi_dp*(yld + hard_i)
 c
-c         --- Update hardening function and its derivative ---
-          hrdtmp = hpd*(hk*alptmp
-     &            +(hpa -yld)*(1.d0 -dexp(-hpb*alptmp)))
-          dhdtmp = hpd*(hk
-     &            +hpb*(hpa -yld)*dexp(-hpb*alptmp))
+c         Derivative ∂gg/∂Δγ (accounting for α = α₀ + ξ*Δγ)
+          Dg = -vmu 
+     &         - eta_dp*vkp*etabar_dp
+     &         - xi_dp*xi_dp*dhard_i
 c
-c         --- Residual functions for 2-variable system ---
-c         R1: Consistency condition (yield function = 0)
-          R1 = dsqrt(1.d0/2.d0)*stno 
-     &       - vmu*deltag
-     &       + eta_dp*(vkp*etrs - vkp*etabar_dp*deltag)
-     &       - xi_dp*(yld +hrdtmp)
-c
-c         R2: Plastic strain evolution (α = α₀ + ξ*Δγ)  
-          R2 = alptmp - alpeg - xi_dp*deltag
-c
-c         --- Setup 2×2 Jacobian matrix ---
-c         Initialize matrices
-          a = 0.d0
-          x = 0.d0
-          ai = 0.d0
-          c = 0.d0
-          n = 2
-          m = 1
-c
-c         ∂R1/∂deltag
-          a(1,1) = -vmu - eta_dp*vkp*etabar_dp
-c         ∂R1/∂alpeg  
-          a(1,2) = -xi_dp*dhdtmp
-c         ∂R2/∂deltag
-          a(2,1) = -xi_dp
-c         ∂R2/∂alpeg
-          a(2,2) = 1.d0
-c
-c         --- Setup RHS vector ---
-          b(1,1) = -R1
-          b(2,1) = -R2
-c
-c         --- Solve linear system: A * Δx = b ---
-c         Copy matrices for solving
-          do 203 l=1,n
-            do 201 k=1,n
-              ai(k,l)=a(k,l)
-  201       continue
-            do 202 k=1,m
-              x(l,k)=b(l,k)
-  202       continue
-  203     continue
-c
-c         --- Gauss elimination with partial pivoting ---
-          call gauss_elim(ai,x,n,m)
-c
-c         --- Update variables ---
-          deltag = deltag + x(1,1)  ! Δγ update
-          alptmp = alptmp + x(2,1)  ! α update
-c
-c         --- Check convergence ---
-          residual_norm = dsqrt(R1*R1 + R2*R2)
-          if(residual_norm.lt.ctol) then
-            GOTO 210
+c         --- Include strain increment effect (from global iteration) ---
+          if(itr.gt.1) then
+            do jj=1,3
+              do ii=1,3
+                dstr = str(ii,jj) - stri(ii,jj)
+                gg = gg - xa(ii,jj)*dstr
+              enddo
+            enddo
           endif
 c
-c         --- デバッグ用出力（iteration毎に整理）
-c         if(it.eq.1) then
-c           write(*,*)
-c           write(*,'(A)') 
-c    &        '========== Plastic Return Mapping Debug Info =========='
-c           write(*,'(A,I3,A,I5,A,I3)') 
-c    &        '  Loading Step: ', lstep_current,
-c    &        '  Element: ', nel_current, 
-c    &        '  Gauss Point: ', ig_current
-c           write(*,'(A)') 
-c    &        '--------------------------------------------------------'
-c           write(*,'(A,E12.5)') '  Initial stno     = ', stno
-c           write(*,'(A,E12.5)') '  Convergence tol  = ', ctol
-c           write(*,'(A,E12.5)') '  vmu (shear mod)  = ', vmu
-c           write(*,'(A,E12.5)') '  vkp (bulk mod)   = ', vkp
-c           write(*,'(A,E12.5)') '  eta_dp           = ', eta_dp
-c           write(*,'(A,E12.5)') '  etabar_dp        = ', etabar_dp
-c           write(*,'(A,E12.5)') '  xi_dp            = ', xi_dp
-c           write(*,'(A)') 
-c    &        '--------------------------------------------------------'
-c         endif
+c         --- Newton update ---
+          deltag = deltagi - gg/Dg
+          alpeg_new = alpeg + xi_dp*deltag
 c
-c         --- Debug output (Block Newton) ---
-c         write(*,'(A,I3,A,2E12.5)') '  BN Iter[', it, ']:',
-c    &      deltag, alptmp
-c         write(*,'(A,2E12.5)') '    Residuals:', R1, R2  
-c         write(*,'(A,E12.5)') '    ||R||:', residual_norm
-  200   continue
+c         Ensure non-negative consistency parameter
+          if(deltag.lt.0.d0) deltag = 0.d0
+        endif
 c
-c     --- error section: Failed to compute "Delta gamma"
-c       write(*,*)
-c       write(*,'(A)') 
-c    &    '********************************************************'
-c       write(*,'(A)') 
-c    &    '**** ERROR: Plastic Return Mapping Failed (ierror=17) *'
-c       write(*,'(A)') 
-c    &    '********************************************************'
-c       write(*,'(A,I3,A,I5,A,I3)') 
-c    &    '  Loading Step: ', lstep_current,
-c    &    '  Element: ', nel_current, 
-c    &    '  Gauss Point: ', ig_current
-c       write(*,'(A,I3)') '  Total iterations attempted: ', itrmax
-c       write(*,'(A)') '  Final convergence status:'
-c       write(*,'(A,E12.5)') '    Final gg       = ', gg
-c       write(*,'(A,E12.5)') '    Final Dg       = ', Dg
-c       if(dabs(Dg).gt.1.0d-20) then
-c         write(*,'(A,E12.5)') '    Final gg/Dg    = ', gg/Dg
-c         write(*,'(A,E12.5)') '    Final |gg/Dg|  = ', dabs(gg/Dg)
-c       else
-c         write(*,'(A)') '    WARNING: Dg is nearly zero!'
-c       endif
-c       write(*,'(A,E12.5)') '    Required tol   = ', ctol
-c       write(*,'(A,E12.5)') '    Final deltag   = ', deltag
-c       write(*,'(A,E12.5)') '    Final alptmp   = ', alptmp
-c       write(*,'(A)') 
-c    &    '********************************************************'
-c       write(*,*)
-        ierror = 17
-        RETURN
-c
-  210   CONTINUE
-c     --- update equivalent plastic strain "alpha"
-        alptmp = alpeg
-        alpeg = alpeg +xi_dp*deltag
-c
-c     --- outward unit normal vector in stress space
-        oun(:,:) = stry(:,:)/stno
-c
-c     --- compute the plastic strain et.al.
-c       etrs already computed at the beginning
-c    8.109に基づく偏差ひずみのアップデート        
+c       === Update plastic strain ===
         plstrg(:,:) = plstrg(:,:) 
      &              + deltag*(
-     &              + oun(:,:)*dsqrt(1.d0/2.d0)     
-     &              + etabar_dp*DELTA(:,:)/3.d0
-     &              ) !ok
-
-
-        sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:) !ok
-     &            +(vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)!ok
-c       p_n+1^tr = vkp*ε_v_n+1^tr = vkp*etrs
-
-
-c     --- update consititutive tensor: "ctens"
-        dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg))
-        A = 1.d0/(vmu + vkp*etabar_dp*eta_dp 
-     &          + xi_dp*xi_dp*dhard)
-
-        theta = 1.d0 -(dsqrt(2.d0)*vmu*deltag)/stno !ok
-        thetab= (dsqrt(2.d0)*vmu*deltag)/stno - vmu*A !ok
+     &                dsqrt(1.d0/2.d0)*oun(:,:)     
+     &              + etabar_dp*DELTA(:,:)/3.d0)
+c
+c       === Compute stress ===
+        sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:)
+     &           +(vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)
+c
+c       === Compute pseudo stress (for 1-variable system) ===
+        if(itr.gt.1) then
+c         Pseudo stress for yield condition residual correction
+c         For 1-variable system: psig = -(gg/Dg) * ∂σ/∂Δγ
+          psig(:,:) = (gg/Dg)*(dsqrt(2.d0)*vmu*oun(:,:)
+     &                       - eta_dp*vkp*DELTA(:,:)/3.d0)
+c         Add pseudo stress to actual stress
+          sig(:,:) = sig(:,:) + psig(:,:)
+        endif
+c
+c       === Update constitutive tensor ===
+c       Compute tangent using Block Newton formulation
+        hard_new = hpd*(hk*alpeg_new
+     &           +(hpa -yld)*(1.d0 -dexp(-hpb*alpeg_new)))
+        dhard_new = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg_new))
+c
+        A = 1.d0/(vmu + vkp*etabar_dp*eta_dp + xi_dp*xi_dp*dhard_new)
+        theta = 1.d0 -(dsqrt(2.d0)*vmu*deltag)/stno
+        thetab= (dsqrt(2.d0)*vmu*deltag)/stno - vmu*A
 c
         do ll=1,3
           do kk=1,3
@@ -282,40 +218,69 @@ c
                 ctens(ii,jj,kk,ll)
      &            =  2.d0*vmu*theta*( FIT(ii,jj,kk,ll)
      &                       -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
-     &
      &              +2.d0*vmu*thetab*oun(ii,jj)*oun(kk,ll)
-     &
      &              - dsqrt(2.d0)*vmu*A*vkp
      &              *(eta_dp*oun(ii,jj)*DELTA(kk,ll)
      &              + etabar_dp*DELTA(ii,jj)*oun(kk,ll)) 
-     & 
      &              + vkp*(1.d0-vkp*eta_dp*etabar_dp*A)
      &                         *DELTA(ii,jj)*DELTA(kk,ll)
-     
+c             Add Block Newton contribution for 1-variable system
+                if(itr.gt.1) then
+                  ctens(ii,jj,kk,ll) = ctens(ii,jj,kk,ll)
+     &              + (1.d0/Dg)*(dsqrt(1.d0/2.d0)*oun(ii,jj)
+     &                          + etabar_dp*DELTA(ii,jj)/3.d0)
+     &                         *(dsqrt(1.d0/2.d0)*oun(kk,ll)
+     &                          + eta_dp*DELTA(kk,ll)/3.d0)
+                endif
               enddo
             enddo
           enddo
         enddo
 c
-c  ===== ELASTIC CASE:
-c          Identify the Trial Stress as Actual One =====
+c       === Store values for next iteration ===
+        histi(1) = deltag
+        histi(2) = alpeg_new
+        histi(3) = ftreg
+        kk = 3
+        do jj=1,3
+          do ii=1,3
+            kk = kk+1
+            histi(kk) = str(ii,jj)
+          enddo
+        enddo
+c       Store xa (sensitivity ∂Δγ/∂ε) for next iteration
+c       xa = (1/Dg) * (∂gg/∂ε)
+        if(dabs(Dg).gt.1.d-16) then
+          xa(:,:) = (1.d0/Dg)*(dsqrt(1.d0/2.d0)*oun(:,:)
+     &                        + eta_dp*DELTA(:,:)/3.d0)
+        else
+          xa(:,:) = 0.d0
+        endif
+        do jj=1,3
+          do ii=1,3
+            kk = kk+1
+            histi(kk) = xa(ii,jj)
+          enddo
+        enddo
+c
+c       Update alpeg for storage
+        alpeg = alpeg_new
+c       Store yield function value for BN method
+        g_val = gg
+c
+c  ===== ELASTIC CASE =====
       else
         idepg = 0
+        deltag = 0.d0
 c
-c       etrs already computed at the beginning
-c       if(dabs(etrs).le.1.0d-16) etrs = 0.d0
+c       === Elastic stress ===
         sig(:,:) = stry(:,:) +vkp*etrs*DELTA(:,:)
-c       write(*,*) etrs,ctol
-c       write(*,*) vkp*etrs,'aaa'
 c
-c     --- donot update "ctens" ---
-c     --- ここctens,von-misesと同じにしているけどいいのか・・・
+c       === Elastic tangent moduli ===
         do ll=1,3
           do kk=1,3
             do jj=1,3
               do ii=1,3
-c               ctens(ii,jj,kk,ll) = vlm*DELTA(ii,jj)*DELTA(kk,ll)
-c    &                              +2.d0*vmu*FIT(ii,jj,kk,ll)
                 ctens(ii,jj,kk,ll)
      &            = vkp*DELTA(ii,jj)*DELTA(kk,ll)
      &              +2.d0*vmu*( FIT(ii,jj,kk,ll)
@@ -325,13 +290,16 @@ c    &                              +2.d0*vmu*FIT(ii,jj,kk,ll)
           enddo
         enddo
 c
+c       Store elastic values
+        histi(1) = 0.d0
+        histi(2) = alpeg
+        histi(3) = 0.d0
+c       Set yield function value to zero for elastic case
+        g_val = 0.d0
       endif
 c
-c   === Compute von Mieses Stress  ===
+c   === Compute von Mises Stress ===
       smean = (sig(1,1) +sig(2,2) +sig(3,3))/3.d0
-c     write(*,*) smean
-c     write(*,*) sig
-c
       sd(:,:) = sig(:,:) -smean*DELTA(:,:)
 c
       vons = 0.d0
@@ -343,7 +311,6 @@ c
       vons = dsqrt(1.5d0*vons)
 c
 c   === Compute the Energy Density ===
-c     --- separate the strain into the elastic & plastic
       eel(:,:) = str(:,:) -plstrg(:,:)
 c
 c     --- compute the elastic strain energy density
@@ -372,64 +339,7 @@ c ***** Store Deformation Histories ************************************
           ehist(kk) = plstrg(jj,ii)
         enddo
       enddo
-c     移動硬化変数は保存しない（使用しないため）
 c
-c ***** Store iteration history for Block Newton method ***************
-      histi(1) = deltag
-      histi(2) = alpeg
-c
-c **********************************************************************
 c **********************************************************************
       RETURN
       END
-c
-c ***** Gauss elimination subroutine for Block Newton method *********
-      SUBROUTINE gauss_elim(a,b,n,m)
-      implicit double precision(a-h,o-z)
-      dimension a(20,20),b(20,20)
-c
-c     Forward elimination with partial pivoting
-      do 30 k=1,n-1
-c       Find pivot
-        imax = k
-        do 10 i=k+1,n
-          if(dabs(a(i,k)).gt.dabs(a(imax,k))) imax = i
- 10     continue
-c       Swap rows if needed
-        if(imax.ne.k) then
-          do 11 j=k,n
-            temp = a(k,j)
-            a(k,j) = a(imax,j)
-            a(imax,j) = temp
- 11       continue
-          do 12 j=1,m
-            temp = b(k,j)
-            b(k,j) = b(imax,j)
-            b(imax,j) = temp
- 12       continue
-        endif
-c       Eliminate column
-        do 20 i=k+1,n
-          factor = a(i,k)/a(k,k)
-          do 21 j=k+1,n
-            a(i,j) = a(i,j) - factor*a(k,j)
- 21       continue
-          do 22 j=1,m
-            b(i,j) = b(i,j) - factor*b(k,j)
- 22       continue
- 20     continue
- 30   continue
-c
-c     Back substitution
-      do 40 j=1,m
-        do 50 i=n,1,-1
-          sum = b(i,j)
-          do 51 k=i+1,n
-            sum = sum - a(i,k)*b(k,j)
- 51       continue
-          b(i,j) = sum/a(i,i)
- 50     continue
- 40   continue
-c
-      return
-      end

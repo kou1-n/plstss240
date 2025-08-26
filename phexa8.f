@@ -4,7 +4,7 @@
      &                  dhist0,dhist1,
      &                   e_ene, p_ene,tene_e,dene_p, tempe,
      &                   dtemp,dtempe,
-     &                  dndx_g, det_g,ctensg,
+     &                  dndx_g, det_g,ctensg, g_vals,
      &                  ierror, itr, histi0 )
 c
       implicit double precision (a-h,o-z)
@@ -14,6 +14,7 @@ c
       dimension ctensg(3,3,3,3,ngaus,nelx)
       dimension dhist0(20,ngaus,nelx),dhist1(20,ngaus,nelx)
       dimension histi0(50,ngaus,nelx)
+      dimension g_vals(ngaus)
 c
       dimension idep(8)
 c
@@ -50,6 +51,8 @@ c
 c
       sts = 0.d0 ! sts(:,:) = 0.d0
       stn = 0.d0 ! stn(:,:) = 0.d0
+c     Initialize yield function values for BN method
+      g_vals = 0.d0
 c
 c ***** Set Material Properties ****************************************
 c    --- thermal parameters
@@ -184,20 +187,20 @@ c            ! MATYPE=4 uses the new stress_dp routine
      &                   ctens,
      &                  ierror, itr, histi )
           elseif(MATYPE.eq.4) then
-            CALL stress_dp_bn(itrmax, idepg,
-     &                   prope,   sig,   str, ehist,
-     &                    ctol,  vons, e_dns, p_dns,
-     &                   ctens,
-     &                  ierror,  itr , histi )
-          elseif(MATYPE.eq.5) then
-c           --- Set debug info for current element and gauss point ---
-            nel_current = nel
-            ig_current = ig
             CALL stress_dp_rm(itrmax, idepg,
      &                   prope,   sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
-     &                  ierror )     
+     &                  ierror )
+          elseif(MATYPE.eq.5) then
+c           --- Set debug info for current element and gauss point ---
+            nel_current = nel
+            ig_current = ig
+            CALL stress_dp_bn(itrmax, idepg,
+     &                   prope,   sig,   str, ehist,
+     &                    ctol,  vons, e_dns, p_dns,
+     &                   ctens, g_vals(ig),
+     &                  ierror,  itr , histi )     
           else
             STOP 'Something wrong in phexa8'
           endif

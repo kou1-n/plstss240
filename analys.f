@@ -436,8 +436,21 @@ c         --- Standard output for other methods ---
             WRITE(*,8003) dsqrt(rnorm),dsqrt(fnorm),rbf
           endif
 c
-          if(rbf.lt.ctol) then
-            GOTO 1500
+c         === Box 2 Convergence Criteria (Paper equations 77+79) ===
+          if(isbnm.eq.1) then
+c           Block Newton: Both equilibrium AND yield condition must converge
+c           ||Rf||₂ ≤ hf ||F^ext||₂ & ||Rg||₂ ≤ hg
+            equilibrium_converged = rbf.lt.ctol
+            yield_converged = g_norm.lt.ctol
+            if(equilibrium_converged .and. yield_converged) then
+              WRITE(*,*) 'Block Newton: Both criteria satisfied'
+              GOTO 1500
+            endif
+          else
+c           Standard: Only equilibrium convergence
+            if(rbf.lt.ctol) then
+              GOTO 1500
+            endif
           endif
 c
  2000   CONTINUE

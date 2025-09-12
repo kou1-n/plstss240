@@ -31,6 +31,9 @@ c     --- Block Newton variables (1-variable system for D-P) ---
       REAL*8 deltag, alpeg_new, Dg
       REAL*8 deltagi, alpegi, ftri
       REAL*8 gg, xa(3,3)
+c     --- L, M, N matrices for Box 2 formulation ---
+      dimension L_mat(3,3), M_mat(3,3)
+      REAL*8 N_scalar
 c
       common /fnctn/ DELTA(3,3),EPSLN(3,3,3),FIT(3,3,3,3),DTENS(3,3,3,3)
 c **********************************************************************
@@ -136,13 +139,53 @@ c  ===== PLASTIC CASE: Block Newton Method =====
         idepg = 1
 c
         if(itr.eq.1) then
-c         --- First iteration: classical estimate ---
+c         === BOX 2 STEP 1: INITIALIZE ===
+c         Following Yamamoto et al. (2021) Box 2 initialization exactly
+c         
+c         1. Δγ⁽⁰⁾ = 0
           deltag = 0.d0
+c         
+c         2. g(u_{n+1}^{(0)}, γ_{n+1}^{(0)}) = 0  
+          gg = 0.d0
+c         
+c         3. ε^p(u_{n+1}^{(0)}, γ_{n+1}^{(0)}) = ε^p(u_n, γ_n)
+c            (plstrg already loaded from ehist - no change needed)
+c         
+c         4. α(γ_{n+1}^{(0)}) = α(γ_n)  
           alpeg_new = alpeg
-c         Compute Dg for storing xa (even in first iteration)
-          Dg = -vmu 
-     &         - eta_dp*vkp*etabar_dp
-     &         - xi_dp*xi_dp*dhard
+c         
+c         5. β(u_{n+1}^{(0)}, γ_{n+1}^{(0)}) = β(u_n, γ_n)
+c            (For D-P: kinematic hardening handled through α relationship)
+c         
+c         6. n(u_{n+1}^{(0)}, γ_{n+1}^{(0)}) = n(u_n, γ_n)
+c            (oun computed from current trial stress - keep existing logic)
+c         
+c         === BOX 2 STEP 2: Compute tangent moduli for first calculation ===
+c         Compute L, M, N matrices according to paper equations (48)-(50)
+c         
+c         L = -C^e : n = -2μn (for D-P: includes volumetric term)
+          do jj=1,3
+            do ii=1,3
+              L_mat(ii,jj) = -dsqrt(2.d0)*vmu*oun(ii,jj) 
+     &                       - eta_dp*vkp*DELTA(ii,jj)/3.d0
+            enddo
+          enddo
+c         
+c         M = 2μn (for D-P: includes dilatancy term)  
+          do jj=1,3
+            do ii=1,3
+              M_mat(ii,jj) = dsqrt(1.d0/2.d0)*oun(ii,jj)
+     &                       + etabar_dp*DELTA(ii,jj)/3.d0
+            enddo
+          enddo
+c         
+c         N = -{2μ + (2/3)[H' + K'(γ_n)]} (for D-P: modified form)
+          N_scalar = -vmu 
+     &             - eta_dp*vkp*etabar_dp
+     &             - xi_dp*xi_dp*dhard
+c         
+c         Keep Dg for backward compatibility
+          Dg = N_scalar
         else
 c         --- Block Newton update (1-variable system for D-P) ---
 c         Since α = α₀ + ξ*Δγ, we only need to solve for Δγ
@@ -158,10 +201,30 @@ c         Residual: Yield function (similar to stress_dp_rm.f)
      &       + eta_dp*(vkp*etrs - vkp*etabar_dp*deltagi)
      &       - xi_dp*(yld + hard_i)
 c
-c         Derivative ∂gg/∂Δγ (accounting for α = α₀ + ξ*Δγ)
-          Dg = -vmu 
-     &         - eta_dp*vkp*etabar_dp
-     &         - xi_dp*xi_dp*dhard_i
+c         === Update L, M, N matrices for current iteration ===
+c         L = -C^e : n (updated with current n)
+          do jj=1,3
+            do ii=1,3
+              L_mat(ii,jj) = -dsqrt(2.d0)*vmu*oun(ii,jj) 
+     &                       - eta_dp*vkp*DELTA(ii,jj)/3.d0
+            enddo
+          enddo
+c         
+c         M = 2μn (updated with current n)
+          do jj=1,3
+            do ii=1,3
+              M_mat(ii,jj) = dsqrt(1.d0/2.d0)*oun(ii,jj)
+     &                       + etabar_dp*DELTA(ii,jj)/3.d0
+            enddo
+          enddo
+c         
+c         N = -{2μ + (2/3)[H' + K'(γ_i)]} (updated hardening)
+          N_scalar = -vmu 
+     &             - eta_dp*vkp*etabar_dp
+     &             - xi_dp*xi_dp*dhard_i
+c         
+c         Keep Dg for backward compatibility
+          Dg = N_scalar
 c
 c         --- Include strain increment effect (from global iteration) ---
           if(itr.gt.1) then
@@ -191,47 +254,68 @@ c       === Compute stress ===
         sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:)
      &           +(vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)
 c
-c       === Compute pseudo stress (for 1-variable system) ===
+c       === Compute stress corrector σg (Paper equation 53) ===
         if(itr.gt.1) then
-c         Pseudo stress for yield condition residual correction
-c         For 1-variable system: psig = -(gg/Dg) * ∂σ/∂Δγ
-          psig(:,:) = (gg/Dg)*(dsqrt(2.d0)*vmu*oun(:,:)
-     &                       - eta_dp*vkp*DELTA(:,:)/3.d0)
-c         Add pseudo stress to actual stress
+c         σg = -{N^-1 · g} L (Paper formulation)
+c         This corrects stress to satisfy yield condition
+          if(dabs(N_scalar).gt.1.d-16) then
+            correction_factor = -(gg / N_scalar)
+            do jj=1,3
+              do ii=1,3
+                psig(ii,jj) = correction_factor * L_mat(ii,jj)
+              enddo
+            enddo
+          else
+            psig(:,:) = 0.d0
+          endif
+c         Add stress corrector to actual stress
           sig(:,:) = sig(:,:) + psig(:,:)
         endif
 c
 c       === Update constitutive tensor ===
-c       Compute tangent using Block Newton formulation
+c       Compute tangent using Box 2 formulation: C^ep = C - N^-1 L ⊗ M
         hard_new = hpd*(hk*alpeg_new
      &           +(hpa -yld)*(1.d0 -dexp(-hpb*alpeg_new)))
         dhard_new = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg_new))
 c
-        A = 1.d0/(vmu + vkp*etabar_dp*eta_dp + xi_dp*xi_dp*dhard_new)
-        theta = 1.d0 -(dsqrt(2.d0)*vmu*deltag)/stno
-        thetab= (dsqrt(2.d0)*vmu*deltag)/stno - vmu*A
+c       === Update L, M, N for current state ===
+        do jj=1,3
+          do ii=1,3
+            L_mat(ii,jj) = -dsqrt(2.d0)*vmu*oun(ii,jj) 
+     &                     - eta_dp*vkp*DELTA(ii,jj)/3.d0
+            M_mat(ii,jj) = dsqrt(1.d0/2.d0)*oun(ii,jj)
+     &                     + etabar_dp*DELTA(ii,jj)/3.d0
+          enddo
+        enddo
+        N_scalar = -vmu - eta_dp*vkp*etabar_dp - xi_dp*xi_dp*dhard_new
+        Dg = N_scalar  ! Keep for compatibility
+c
+c       === Compute C matrix (with geometric softening) ===
+        if(deltag.gt.1.d-16 .and. stno.gt.1.d-16) then
+          theta = 1.d0 - (dsqrt(2.d0)*vmu*deltag)/stno
+        else
+          theta = 1.d0
+        endif
+c
+c       === Compute C^ep = C - N^-1 L ⊗ M (Paper equation) ===
+        if(dabs(N_scalar).gt.1.d-16) then
+          N_inv = 1.d0 / N_scalar
+        else
+          N_inv = 0.d0
+        endif
 c
         do ll=1,3
           do kk=1,3
             do jj=1,3
               do ii=1,3
-                ctens(ii,jj,kk,ll)
-     &            =  2.d0*vmu*theta*( FIT(ii,jj,kk,ll)
-     &                       -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
-     &              +2.d0*vmu*thetab*oun(ii,jj)*oun(kk,ll)
-     &              - dsqrt(2.d0)*vmu*A*vkp
-     &              *(eta_dp*oun(ii,jj)*DELTA(kk,ll)
-     &              + etabar_dp*DELTA(ii,jj)*oun(kk,ll)) 
-     &              + vkp*(1.d0-vkp*eta_dp*etabar_dp*A)
-     &                         *DELTA(ii,jj)*DELTA(kk,ll)
-c             Add Block Newton contribution for 1-variable system
-                if(itr.gt.1) then
-                  ctens(ii,jj,kk,ll) = ctens(ii,jj,kk,ll)
-     &              + (1.d0/Dg)*(dsqrt(1.d0/2.d0)*oun(ii,jj)
-     &                          + etabar_dp*DELTA(ii,jj)/3.d0)
-     &                         *(dsqrt(1.d0/2.d0)*oun(kk,ll)
-     &                          + eta_dp*DELTA(kk,ll)/3.d0)
-                endif
+c               C matrix (elastic + geometric softening)
+                C_ijkl = vkp*DELTA(ii,jj)*DELTA(kk,ll)
+     &                 + 2.d0*vmu*theta*( FIT(ii,jj,kk,ll)
+     &                            -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
+c               
+c               C^ep = C - N^-1 L ⊗ M (Paper formulation)
+                ctens(ii,jj,kk,ll) = C_ijkl 
+     &                             - N_inv * L_mat(ii,jj) * M_mat(kk,ll)
               enddo
             enddo
           enddo

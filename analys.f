@@ -70,6 +70,9 @@ c     --- arrays and parameters for PARDISO solver ---
       integer iparm(64)
       integer maxfct,  mnum, mtype, phase,  nrhs
 c
+c     --- logical variables for convergence checking ---
+      logical equilibrium_converged, yield_converged
+c
       common /iodev/ lra,lrb,lwa,lwb,lwc,lwd,lwe,lwf
       common /basic/ nx,nelx,ndf,node,nsn,lmat,lang,ngaus
       common /bound/ lnum,locc,nspc,mpc,npoin,npres,nbody,ntn

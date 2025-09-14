@@ -311,7 +311,7 @@ c
 c               C matrix (elastic + geometric softening)
                 C_ijkl = vkp*DELTA(ii,jj)*DELTA(kk,ll)
      &                 + 2.d0*vmu*theta*( FIT(ii,jj,kk,ll)
-     &                            -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
+     &                 -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
 c               
 c               C^ep = C - N^-1 L ⊗ M (Paper formulation)
                 ctens(ii,jj,kk,ll) = C_ijkl 

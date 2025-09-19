@@ -34,6 +34,8 @@ c     --- Block Newton variables (1-variable system for D-P) ---
 c     --- L, M, N matrices for Box 2 formulation ---
       dimension L_mat(3,3), M_mat(3,3)
       REAL*8 N_scalar
+c     --- Drucker-Prager parameters ---
+      REAL*8 eta_dp, xi_dp, etabar_dp, phi_dp, psi_dp
 c
       common /fnctn/ DELTA(3,3),EPSLN(3,3,3),FIT(3,3,3,3),DTENS(3,3,3,3)
 c **********************************************************************
@@ -90,12 +92,25 @@ c    --- plastic parameters
       hpd = prope(15)
       phi_dp = prope(16)
       psi_dp = prope(17)
-      eta_dp   = 6.d0 * sin(phi_dp) / ( dsqrt(3.d0) * 
+c     DEBUG: Check input angles before calculation
+      if(nel_current.eq.1 .and. ig_current.eq.1
+     &   .and. lstep_current.eq.1) then
+        write(*,'(A,2E12.4)') ' INPUT phi_dp,psi_dp:', phi_dp, psi_dp
+      endif
+c     === Drucker-Prager parameters ===
+      eta_dp   = 6.d0 * sin(phi_dp) / ( dsqrt(3.d0) *
      &                                 (3.d0 - sin(phi_dp)) )
       xi_dp    = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) *
      &                                 (3.d0 - sin(phi_dp)) )
       etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
      &                                  (3.d0 - sin(psi_dp)) )
+c     DEBUG: Print calculated parameters (temporarily disabled)
+c      if(nel_current.eq.1 .and. ig_current.eq.1
+c     &   .and. lstep_current.eq.1) then
+c        write(*,'(A)') ' === CALCULATED D-P PARAMETERS ==='
+c        write(*,'(A,3E12.4)') ' eta,xi,etabar:', eta_dp, xi_dp, etabar_dp
+c        write(*,'(A,2E12.4)') ' vmu,vkp:', vmu, vkp
+c      endif
 c
 c ***** Initialization *************************************************
       deltag = 0.d0
@@ -103,14 +118,15 @@ c ***** Initialization *************************************************
       ctens  = 0.d0
       ierror = 0
 c
-c   === Compute Trial Elastic Stress ===
+c   === BOX 1 STEP 1: Compute Trial Elastic Stress ===
       etrs = str(1,1) +str(2,2) +str(3,3)
       emean = etrs/3.d0
 c
-c   Trial deviatoric stress
+c   Trial deviatoric stress: s^tr = 2μ{dev[ε] - ε^p}
       stry = 2.d0*vmu*(str -emean*DELTA -plstrg)
 c
-c   Norm of trial deviatoric stress
+c   Trial relative stress: ξ^tr = s^tr - β (back stress from history)
+c   For now, assuming β = 0 (can be extended for kinematic hardening)
       stno = 0.d0
       do jj=1,3
         do ii=1,3
@@ -127,11 +143,18 @@ c   Unit normal
       endif
 c
 c  === Compute Hardening Function & Yield Function ===
+c     === Complete yield function evaluation for plastic check ===
       hard = hpd*(hk*alpeg
      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
       dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg))
-c
-      ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*vkp*etrs 
+c     DEBUG: Check hardening derivative
+      if(nel_current.eq.1 .and. ig_current.eq.1) then
+        write(*,'(A,I3,A,5E12.4)') ' Step',lstep_current,
+     &    ' hpd,hk,hpb,hpa,yld:', hpd, hk, hpb, hpa, yld
+        write(*,'(A,I3,A,2E12.4)') ' Step',lstep_current,
+     &    ' alpeg,dhard:', alpeg, dhard
+      endif
+      ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*vkp*etrs
      &      - xi_dp*(yld +hard)
 c
 c  ===== PLASTIC CASE: Block Newton Method =====
@@ -141,13 +164,18 @@ c
         if(itr.eq.1) then
 c         === BOX 2 STEP 1: INITIALIZE ===
 c         Following Yamamoto et al. (2021) Box 2 initialization exactly
-c         
+c
 c         1. Δγ⁽⁰⁾ = 0
           deltag = 0.d0
-c         
-c         2. g(u_{n+1}^{(0)}, γ_{n+1}^{(0)}) = 0  
-          gg = 0.d0
-c         
+c
+c         2. For Block Newton: evaluate initial yield function
+c            Initially deltag=0, so similar to trial state evaluation
+          hard = hpd*(hk*alpeg
+     &         +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
+          gg = dsqrt(1.d0/2.d0)*stno
+     &       + eta_dp*vkp*etrs
+     &       - xi_dp*(yld + hard)
+c
 c         3. ε^p(u_{n+1}^{(0)}, γ_{n+1}^{(0)}) = ε^p(u_n, γ_n)
 c            (plstrg already loaded from ehist - no change needed)
 c         
@@ -163,132 +191,120 @@ c
 c         === BOX 2 STEP 2: Compute tangent moduli for first calculation ===
 c         Compute L, M, N matrices according to paper equations (48)-(50)
 c         
-c         L = -C^e : n = -2μn (for D-P: includes volumetric term)
+c         L = -C^e : (n + α/3*I) = -2μn - κα/3*I (Drucker-Prager)
           do jj=1,3
             do ii=1,3
-              L_mat(ii,jj) = -dsqrt(2.d0)*vmu*oun(ii,jj) 
+              L_mat(ii,jj) = -2.d0*vmu*oun(ii,jj)
      &                       - eta_dp*vkp*DELTA(ii,jj)/3.d0
             enddo
           enddo
 c         
-c         M = 2μn (for D-P: includes dilatancy term)  
+c         M = 2μ(n + β/3*I) = 2μn + 2μβ/3*I (Drucker-Prager)
           do jj=1,3
             do ii=1,3
-              M_mat(ii,jj) = dsqrt(1.d0/2.d0)*oun(ii,jj)
-     &                       + etabar_dp*DELTA(ii,jj)/3.d0
+              M_mat(ii,jj) = 2.d0*vmu*oun(ii,jj)
+     &                       + 2.d0*vmu*etabar_dp*DELTA(ii,jj)/3.d0
             enddo
           enddo
 c         
-c         N = -{2μ + (2/3)[H' + K'(γ_n)]} (for D-P: modified form)
-          N_scalar = -vmu 
-     &             - eta_dp*vkp*etabar_dp
-     &             - xi_dp*xi_dp*dhard
+c         DEBUG: Analyze N_scalar components in detail
+          term1 = 2.d0*vmu
+          term2 = vkp*etabar_dp*eta_dp
+          term3 = xi_dp*xi_dp*dhard
+          if(nel_current.eq.1 .and. ig_current.eq.1) then
+            write(*,'(A,I3)') ' === N_scalar DEBUG Step:', lstep_current
+            write(*,'(A,E12.4)') '   2*mu        =', term1
+            write(*,'(A,E12.4)') '   kappa*eta^2 =', term2
+            write(*,'(A,E12.4)') '   xi^2*dhard  =', term3
+            write(*,'(A,E12.4)') '   vmu         =', vmu
+            write(*,'(A,E12.4)') '   vkp         =', vkp
+            write(*,'(A,E12.4)') '   etabar_dp   =', etabar_dp
+            write(*,'(A,E12.4)') '   eta_dp      =', eta_dp
+            write(*,'(A,E12.4)') '   xi_dp       =', xi_dp
+            write(*,'(A,E12.4)') '   dhard       =', dhard
+          endif
+c         N = -{2μ + κβα + 硬化項} (Drucker-Prager specific)
+          N_scalar = -(term1 + term2 + term3)
+          if(nel_current.eq.1 .and. ig_current.eq.1) then
+            write(*,'(A,E12.4)') '   N_total     =', N_scalar
+            write(*,'(A,E12.4)') '   |N_total|   =', dabs(N_scalar)
+            if(dabs(N_scalar).lt.1.d-6) then
+              write(*,'(A)') ' *** CRITICAL: N_scalar very small! ***'
+            endif
+          endif
+c         Prevent singular matrix (ensure N_scalar is not too small)
+          if(dabs(N_scalar).lt.1.d-12) then
+            write(*,'(A,E12.4)') ' WARNING: N_scalar too small:', N_scalar
+            N_scalar = -2.d0*vmu
+            write(*,'(A,E12.4)') ' Reset to -2*mu:', N_scalar
+          endif
 c         
 c         Keep Dg for backward compatibility
           Dg = N_scalar
         else
-c         --- Block Newton update (1-variable system for D-P) ---
-c         Since α = α₀ + ξ*Δγ, we only need to solve for Δγ
-          alpegi = alpeg + xi_dp*deltagi
-          
-          hard_i = hpd*(hk*alpegi
-     &           +(hpa -yld)*(1.d0 -dexp(-hpb*alpegi)))
-          dhard_i = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpegi))
+c         === BOX 1 STEP 2: Block Newton (no local iteration) ===
+c         Following Yamamoto et al.: direct state update without local Newton
 c
-c         Residual: Yield function (similar to stress_dp_rm.f)
-          gg = dsqrt(1.d0/2.d0)*stno 
-     &       - vmu*deltagi
-     &       + eta_dp*(vkp*etrs - vkp*etabar_dp*deltagi)
-     &       - xi_dp*(yld + hard_i)
+c         === Evaluate with current deltagi (from global system) ===
+c         No local Newton iteration - use global coupling result
 c
 c         === Update L, M, N matrices for current iteration ===
-c         L = -C^e : n (updated with current n)
+c         L = -C^e : (n + α/3*I) = -2μn - κα/3*I (Drucker-Prager)
           do jj=1,3
             do ii=1,3
-              L_mat(ii,jj) = -dsqrt(2.d0)*vmu*oun(ii,jj) 
+              L_mat(ii,jj) = -2.d0*vmu*oun(ii,jj)
      &                       - eta_dp*vkp*DELTA(ii,jj)/3.d0
             enddo
           enddo
-c         
-c         M = 2μn (updated with current n)
+c
+c         M = 2μ(n + β/3*I) = 2μn + 2μβ/3*I (Drucker-Prager)
           do jj=1,3
             do ii=1,3
-              M_mat(ii,jj) = dsqrt(1.d0/2.d0)*oun(ii,jj)
-     &                       + etabar_dp*DELTA(ii,jj)/3.d0
+              M_mat(ii,jj) = 2.d0*vmu*oun(ii,jj)
+     &                       + 2.d0*vmu*etabar_dp*DELTA(ii,jj)/3.d0
             enddo
           enddo
-c         
-c         N = -{2μ + (2/3)[H' + K'(γ_i)]} (updated hardening)
-          N_scalar = -vmu 
-     &             - eta_dp*vkp*etabar_dp
-     &             - xi_dp*xi_dp*dhard_i
-c         
-c         Keep Dg for backward compatibility
-          Dg = N_scalar
 c
-c         --- Include strain increment effect (from global iteration) ---
-          if(itr.gt.1) then
-            do jj=1,3
-              do ii=1,3
-                dstr = str(ii,jj) - stri(ii,jj)
-                gg = gg - xa(ii,jj)*dstr
-              enddo
-            enddo
-          endif
-c
-c         --- Newton update ---
-          deltag = deltagi - gg/Dg
-          alpeg_new = alpeg + xi_dp*deltag
-c
-c         Ensure non-negative consistency parameter
+c         === BOX 1 STEP 2: Check consistency parameter Δγ^(k+1) ===
+          deltag = deltagi
           if(deltag.lt.0.d0) deltag = 0.d0
-        endif
-c
-c       === Update plastic strain ===
-        plstrg(:,:) = plstrg(:,:) 
-     &              + deltag*(
-     &                dsqrt(1.d0/2.d0)*oun(:,:)     
-     &              + etabar_dp*DELTA(:,:)/3.d0)
-c
-c       === Compute stress ===
-        sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:)
-     &           +(vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)
-c
-c       === Compute stress corrector σg (Paper equation 53) ===
-        if(itr.gt.1) then
-c         σg = -{N^-1 · g} L (Paper formulation)
-c         This corrects stress to satisfy yield condition
-          if(dabs(N_scalar).gt.1.d-16) then
-            correction_factor = -(gg / N_scalar)
-            do jj=1,3
-              do ii=1,3
-                psig(ii,jj) = correction_factor * L_mat(ii,jj)
-              enddo
-            enddo
-          else
-            psig(:,:) = 0.d0
+c         DEBUG: Print deltag value
+          if(nel_current.eq.1 .and. ig_current.eq.1) then
+            write(*,'(A,I3,A,2E12.4)') ' Step',lstep_current,
+     &        ' deltagi,deltag:', deltagi, deltag
           endif
-c         Add stress corrector to actual stress
-          sig(:,:) = sig(:,:) + psig(:,:)
-        endif
-c
-c       === Update constitutive tensor ===
-c       Compute tangent using Box 2 formulation: C^ep = C - N^-1 L ⊗ M
-        hard_new = hpd*(hk*alpeg_new
-     &           +(hpa -yld)*(1.d0 -dexp(-hpb*alpeg_new)))
-        dhard_new = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg_new))
-c
-c       === Update L, M, N for current state ===
-        do jj=1,3
-          do ii=1,3
-            L_mat(ii,jj) = -dsqrt(2.d0)*vmu*oun(ii,jj) 
-     &                     - eta_dp*vkp*DELTA(ii,jj)/3.d0
-            M_mat(ii,jj) = dsqrt(1.d0/2.d0)*oun(ii,jj)
-     &                     + etabar_dp*DELTA(ii,jj)/3.d0
+
+c         === BOX 1: Update state variables ===
+c         Update plastic strain: εᵖ = εᵖₙ + Δγ·n
+          plstrg(:,:) = plstrg(:,:) + deltag*oun(:,:)*dsqrt(1.d0/2.d0)
+     &                + deltag*etabar_dp*DELTA(:,:)/3.d0
+c         Update equivalent plastic strain: α = αₙ + √(2/3)·Δγ
+          alpeg = alpeg + xi_dp*deltag
+c         Update stress: σ = κtr[ε]I + s^tr - √2μΔγn
+          sig(:,:) = stry(:,:) - dsqrt(2.d0)*vmu*deltag*oun(:,:)
+     &             + (vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)
+
+c       === BOX 1: Evaluate yield function with updated state ===
+        smean = (sig(1,1)+sig(2,2)+sig(3,3))/3.d0
+        stno = 0.d0
+        do ii=1,3
+          do jj=1,3
+            stno = stno +(sig(ii,jj) - smean*DELTA(ii,jj))**2
           enddo
         enddo
-        N_scalar = -vmu - eta_dp*vkp*etabar_dp - xi_dp*xi_dp*dhard_new
-        Dg = N_scalar  ! Keep for compatibility
+        stno = dsqrt(stno)
+        hard = hpd*(hk*alpeg
+     &       +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
+c       DEBUG: Print yield function components
+        if(nel_current.eq.1 .and. ig_current.eq.1) then
+          write(*,'(A,I3,A,3E12.4)') ' Step',lstep_current,
+     &      ' q,p,hard:', dsqrt(1.d0/2.d0)*stno, eta_dp*smean, hard
+        endif
+        g_val = dsqrt(1.d0/2.d0)*stno + eta_dp*smean
+     &        - xi_dp*(yld + hard)
+c
+c       === BOX 1 STEP 3: Compute tangent moduli ===
+c       Use already computed L, M, N matrices
 c
 c       === Compute C matrix (with geometric softening) ===
         if(deltag.gt.1.d-16 .and. stno.gt.1.d-16) then
@@ -311,7 +327,7 @@ c
 c               C matrix (elastic + geometric softening)
                 C_ijkl = vkp*DELTA(ii,jj)*DELTA(kk,ll)
      &                 + 2.d0*vmu*theta*( FIT(ii,jj,kk,ll)
-     &                 -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
+     &                 - (1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
 c               
 c               C^ep = C - N^-1 L ⊗ M (Paper formulation)
                 ctens(ii,jj,kk,ll) = C_ijkl 
@@ -334,8 +350,8 @@ c       === Store values for next iteration ===
         enddo
 c       Store xa (sensitivity ∂Δγ/∂ε) for next iteration
 c       xa = (1/Dg) * (∂gg/∂ε)
-        if(dabs(Dg).gt.1.d-16) then
-          xa(:,:) = (1.d0/Dg)*(dsqrt(1.d0/2.d0)*oun(:,:)
+        if(dabs(N_scalar).gt.1.d-16) then
+          xa(:,:) = (1.d0/N_scalar)*(dsqrt(1.d0/2.d0)*oun(:,:)
      &                        + eta_dp*DELTA(:,:)/3.d0)
         else
           xa(:,:) = 0.d0
@@ -349,13 +365,16 @@ c       xa = (1/Dg) * (∂gg/∂ε)
 c
 c       Update alpeg for storage
         alpeg = alpeg_new
-c       Store yield function value for BN method
-        g_val = gg
+      endif
 c
 c  ===== ELASTIC CASE =====
       else
         idepg = 0
         deltag = 0.d0
+c
+c       === Elastic case: set yield function to zero (Paper eq. 84) ===
+c       Following Yamamoto et al. Box 1: g ≡ 0 for elastic state
+        gg = 0.d0
 c
 c       === Elastic stress ===
         sig(:,:) = stry(:,:) +vkp*etrs*DELTA(:,:)
@@ -378,8 +397,8 @@ c       Store elastic values
         histi(1) = 0.d0
         histi(2) = alpeg
         histi(3) = 0.d0
-c       Set yield function value to zero for elastic case
-        g_val = 0.d0
+c       Store yield function value: 0 for elastic case (Paper eq. 84)
+        g_val = gg
       endif
 c
 c   === Compute von Mises Stress ===

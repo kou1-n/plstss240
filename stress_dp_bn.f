@@ -279,7 +279,12 @@ c         Update plastic strain: εᵖ = εᵖₙ + Δγ·n
           plstrg(:,:) = plstrg(:,:) + deltag*oun(:,:)*dsqrt(1.d0/2.d0)
      &                + deltag*etabar_dp*DELTA(:,:)/3.d0
 c         Update equivalent plastic strain: α = αₙ + √(2/3)·Δγ
-          alpeg = alpeg + xi_dp*deltag
+          alpeg_new = alpeg + xi_dp*deltag
+c         Update hardening derivative for updated state
+          dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg_new))
+c         Update N_scalar for current state
+          N_scalar = -(2.d0*vmu + vkp*etabar_dp*eta_dp
+     &              + xi_dp*xi_dp*dhard)
 c         Update stress: σ = κtr[ε]I + s^tr - √2μΔγn
           sig(:,:) = stry(:,:) - dsqrt(2.d0)*vmu*deltag*oun(:,:)
      &             + (vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)
@@ -293,8 +298,8 @@ c       === BOX 1: Evaluate yield function with updated state ===
           enddo
         enddo
         stno = dsqrt(stno)
-        hard = hpd*(hk*alpeg
-     &       +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
+        hard = hpd*(hk*alpeg_new
+     &       +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg_new)))
 c       DEBUG: Print yield function components
         if(nel_current.eq.1 .and. ig_current.eq.1) then
           write(*,'(A,I3,A,3E12.4)') ' Step',lstep_current,

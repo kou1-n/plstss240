@@ -5,21 +5,29 @@
      &                  ierror,  itr , histi )
 c
 c **********************************************************************
-c     Block Newton method implementation for Drucker-Prager plasticity
-c     Based on: Yamamoto et al. (2021) Box 2 formulation
-c     
-c     Features:
-c     - 1-variable system (deltag only) since alpha = alpha0 + xi*deltag
-c     - No local iterations - uses global Block Newton approach
-c     - Pseudo stress correction for yield condition residual
+c     Block Newton法によるDrucker-Prager弾塑性構成則
+c
+c     参考文献: Yamamoto et al. (2021) "Simultaneously iterative procedure
+c              based on block Newton method for elastoplastic problems"
+c              Int. J. Numer. Methods Eng. 122(9), 2145-2178
+c
+c     特徴:
+c     - 局所反復を行わない（大域的Newton反復のみ）
+c     - 平衡方程式と降伏条件を同時に解く
+c     - consistency parameter Δγを代数的に更新
+c
+c     処理の流れ:
+c     1. 試行応力の計算（弾性予測子）
+c     2. 降伏判定
+c     3. 塑性の場合：BOX 1アルゴリズムで応力更新
+c     4. 接線剛性の計算（C^ep = C - N^-1 L ⊗ M）
 c **********************************************************************
 c
       implicit double precision(a-h,o-z)
 c
       dimension prope(20)
 c
-c     --- common for tracking loading step and element info ---
-      common /debug_info/ nel_current, ig_current, lstep_current
+c     --- 共通ブロック（将来の拡張用） ---
       
       dimension str(3,3),stry(3,3),
      &          sig(3,3),oun(3,3),sd(3,3),eel(3,3),
@@ -30,32 +38,40 @@ c
 c     --- Block Newton variables (1-variable system for D-P) ---
       REAL*8 deltag, alpeg_new, Dg
       REAL*8 deltagi, alpegi, ftri
+      REAL*8 deltag_prev, delta_gamma_inc
       REAL*8 gg, xa(3,3)
 c     --- L, M, N matrices for Box 2 formulation ---
       dimension L_mat(3,3), M_mat(3,3)
       REAL*8 N_scalar
 c     --- Drucker-Prager parameters ---
       REAL*8 eta_dp, xi_dp, etabar_dp, phi_dp, psi_dp
+c     --- 作業変数 ---
+      REAL*8 g_val, N_inv
 c
       common /fnctn/ DELTA(3,3),EPSLN(3,3,3),FIT(3,3,3,3),DTENS(3,3,3,3)
 c **********************************************************************
 c
-c ***** Load Deformation Histories *************************************
-      alpeg = ehist(1)
+c ***** 履歴変数の読み込み **********************************************
+c     ehist: 前ステップからの履歴（塑性ひずみ等）
+      alpeg = ehist(1)        ! 等価塑性ひずみ
       kk = 1
       do ii=1,3
         do jj=1,3
           kk = kk+1
-          plstrg(jj,ii) = ehist(kk)
+          plstrg(jj,ii) = ehist(kk)  ! 塑性ひずみテンソル
         enddo
       enddo
 c
-c     --- Load iteration history from previous global iteration ---
+c     === 反復履歴の処理（Block Newton法） ===
       if(itr.gt.1) then
-        deltagi = histi(1)
-        alpegi  = histi(2)
-        ftri    = histi(3)  ! Previous yield function value
-        kk = 3
+c       --- phexa8.fで計算されたδγ増分を取得 ---
+        delta_gamma_inc = histi(1)  ! δγ増分（phexa8から）
+        deltag_prev = histi(34)     ! 前回の累積Δγ（位置34に移動）
+c       累積値を更新: Δγ^(k+1) = Δγ^(k) + δγ
+        deltagi = deltag_prev + delta_gamma_inc
+        alpegi  = histi(3)          ! 前回のalpeg
+        ftri    = histi(4)          ! 前回の降伏関数値
+        kk = 4
         do jj=1,3
           do ii=1,3
             kk = kk+1
@@ -69,107 +85,98 @@ c     --- Load iteration history from previous global iteration ---
           enddo
         enddo
       else
+c       === 初回反復：BOX 2初期化 ===
         deltagi = 0.d0
+        deltag_prev = 0.d0          ! 初回なので累積Δγ=0
+        delta_gamma_inc = 0.d0      ! 初回なのでδγ=0
         alpegi  = alpeg
         ftri    = 0.d0
         stri    = str
         xa      = 0.d0
+c       初回反復でもhisti(34)を初期化
+        histi(34) = 0.d0            ! 初回の累積Δγ=0
       endif
 c
-c ***** Set Material Properties ****************************************
-c    --- elastic parameters
-      yng = prope(1)
-      poi = prope(2)
-      vmu = yng/(2.d0*(1.d0 +poi))
-      vlm = poi*yng/((1.d0 +poi)*(1.d0 -2.d0*poi))
-      vkp = yng/(3.d0*(1.d0 -2.d0*poi))
-c    --- plastic parameters
-      yld = prope(10)
-      hk  = prope(11)
-      hpa = prope(12)
-      hpb = prope(13)
-      hpc = prope(14)
-      hpd = prope(15)
-      phi_dp = prope(16)
-      psi_dp = prope(17)
-c     DEBUG: Check input angles before calculation
-      if(nel_current.eq.1 .and. ig_current.eq.1
-     &   .and. lstep_current.eq.1) then
-        write(*,'(A,2E12.4)') ' INPUT phi_dp,psi_dp:', phi_dp, psi_dp
-      endif
-c     === Drucker-Prager parameters ===
+c ***** 材料定数の設定 **************************************************
+c     === 弾性定数 ===
+      yng = prope(1)        ! ヤング率
+      poi = prope(2)        ! ポアソン比
+      vmu = yng/(2.d0*(1.d0 +poi))                       ! せん断弾性係数
+      vlm = poi*yng/((1.d0 +poi)*(1.d0 -2.d0*poi))     ! ラメ第1定数
+      vkp = yng/(3.d0*(1.d0 -2.d0*poi))                 ! 体積弾性係数
+c
+c     === 塑性パラメータ ===
+      yld = prope(10)       ! 初期降伏応力
+      hk  = prope(11)       ! 硬化係数1
+      hpa = prope(12)       ! 硬化係数2
+      hpb = prope(13)       ! 硬化係数3
+      hpc = prope(14)       ! 硬化係数4
+      hpd = prope(15)       ! 硬化係数5
+      phi_dp = prope(16)    ! 内部摩擦角
+      psi_dp = prope(17)    ! ダイレイタンシー角
+c
+c     === Drucker-Pragerパラメータの計算 ===
+c     Mohr-Coulombからの変換式
       eta_dp   = 6.d0 * sin(phi_dp) / ( dsqrt(3.d0) *
      &                                 (3.d0 - sin(phi_dp)) )
       xi_dp    = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) *
      &                                 (3.d0 - sin(phi_dp)) )
       etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
      &                                  (3.d0 - sin(psi_dp)) )
-c     DEBUG: Print calculated parameters (temporarily disabled)
-c      if(nel_current.eq.1 .and. ig_current.eq.1
-c     &   .and. lstep_current.eq.1) then
-c        write(*,'(A)') ' === CALCULATED D-P PARAMETERS ==='
-c        write(*,'(A,3E12.4)') ' eta,xi,etabar:', eta_dp, xi_dp, etabar_dp
-c        write(*,'(A,2E12.4)') ' vmu,vkp:', vmu, vkp
-c      endif
+c     Drucker-Pragerパラメータは計算済み
 c
-c ***** Initialization *************************************************
+c ***** 初期化 **********************************************************
       deltag = 0.d0
       psig   = 0.d0
       ctens  = 0.d0
       ierror = 0
 c
-c   === BOX 1 STEP 1: Compute Trial Elastic Stress ===
-      etrs = str(1,1) +str(2,2) +str(3,3)
-      emean = etrs/3.d0
+c   === BOX 1 STEP 1: 試行弾性応力の計算 ===
+c   弾性予測子による応力計算
+      etrs = str(1,1) +str(2,2) +str(3,3)    ! 体積ひずみ
+      emean = etrs/3.d0                       ! 平均ひずみ
 c
-c   Trial deviatoric stress: s^tr = 2μ{dev[ε] - ε^p}
+c   試行偏差応力: s^tr = 2μ{dev[ε] - ε^p}
       stry = 2.d0*vmu*(str -emean*DELTA -plstrg)
 c
-c   Trial relative stress: ξ^tr = s^tr - β (back stress from history)
-c   For now, assuming β = 0 (can be extended for kinematic hardening)
+c   相対応力テンソル: ξ^tr = s^tr - β
+c   （現在はβ=0、移動硬化への拡張可能）
       stno = 0.d0
       do jj=1,3
         do ii=1,3
           stno = stno +stry(ii,jj)**2
         enddo
       enddo
-      stno = dsqrt(stno)
+      stno = dsqrt(stno)    ! ||s^tr||（偏差応力のノルム）
 c
-c   Unit normal
+c   流動則の方向ベクトル n = s^tr/||s^tr||
       if(stno.gt.1.0d-16) then
         oun(:,:) = stry(:,:)/stno
       else
         oun(:,:) = 0.d0
       endif
 c
-c  === Compute Hardening Function & Yield Function ===
-c     === Complete yield function evaluation for plastic check ===
+c  === 硬化関数と降伏関数の評価 ===
+c     Voce型硬化則: H = hpd*(hk*α + (hpa-yld)*(1-exp(-hpb*α)))
       hard = hpd*(hk*alpeg
      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
-      dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg))
-c     DEBUG: Check hardening derivative
-      if(nel_current.eq.1 .and. ig_current.eq.1) then
-        write(*,'(A,I3,A,5E12.4)') ' Step',lstep_current,
-     &    ' hpd,hk,hpb,hpa,yld:', hpd, hk, hpb, hpa, yld
-        write(*,'(A,I3,A,2E12.4)') ' Step',lstep_current,
-     &    ' alpeg,dhard:', alpeg, dhard
-      endif
+      dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg))  ! dH/dα
+c
+c     降伏関数: f = √(1/2)||s|| + η*p - ξ(σ_Y + H)
       ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*vkp*etrs
      &      - xi_dp*(yld +hard)
 c
-c  ===== PLASTIC CASE: Block Newton Method =====
+c  ===== 塑性状態：Block Newton法による応力更新 =====
       if(ftreg.gt.-ctol) then
         idepg = 1
 c
         if(itr.eq.1) then
-c         === BOX 2 STEP 1: INITIALIZE ===
-c         Following Yamamoto et al. (2021) Box 2 initialization exactly
+c         === BOX 2初期化（論文のBOX 2 STEP 1） ===
 c
-c         1. Δγ⁽⁰⁾ = 0
+c         1. Δγ⁽⁰⁾ = 0で初期化
           deltag = 0.d0
 c
-c         2. For Block Newton: evaluate initial yield function
-c            Initially deltag=0, so similar to trial state evaluation
+c         2. 初期降伏関数値の評価
           hard = hpd*(hk*alpeg
      &         +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
           gg = dsqrt(1.d0/2.d0)*stno
@@ -206,37 +213,13 @@ c         M = 2μ(n + β/3*I) = 2μn + 2μβ/3*I (Drucker-Prager)
      &                       + 2.d0*vmu*etabar_dp*DELTA(ii,jj)/3.d0
             enddo
           enddo
-c         
-c         DEBUG: Analyze N_scalar components in detail
-          term1 = 2.d0*vmu
-          term2 = vkp*etabar_dp*eta_dp
-          term3 = xi_dp*xi_dp*dhard
-          if(nel_current.eq.1 .and. ig_current.eq.1) then
-            write(*,'(A,I3)') ' === N_scalar DEBUG Step:', lstep_current
-            write(*,'(A,E12.4)') '   2*mu        =', term1
-            write(*,'(A,E12.4)') '   kappa*eta^2 =', term2
-            write(*,'(A,E12.4)') '   xi^2*dhard  =', term3
-            write(*,'(A,E12.4)') '   vmu         =', vmu
-            write(*,'(A,E12.4)') '   vkp         =', vkp
-            write(*,'(A,E12.4)') '   etabar_dp   =', etabar_dp
-            write(*,'(A,E12.4)') '   eta_dp      =', eta_dp
-            write(*,'(A,E12.4)') '   xi_dp       =', xi_dp
-            write(*,'(A,E12.4)') '   dhard       =', dhard
-          endif
+c
 c         N = -{2μ + κβα + 硬化項} (Drucker-Prager specific)
-          N_scalar = -(term1 + term2 + term3)
-          if(nel_current.eq.1 .and. ig_current.eq.1) then
-            write(*,'(A,E12.4)') '   N_total     =', N_scalar
-            write(*,'(A,E12.4)') '   |N_total|   =', dabs(N_scalar)
-            if(dabs(N_scalar).lt.1.d-6) then
-              write(*,'(A)') ' *** CRITICAL: N_scalar very small! ***'
-            endif
-          endif
+          N_scalar = -(2.d0*vmu + vkp*etabar_dp*eta_dp
+     &              + xi_dp*xi_dp*dhard)
 c         Prevent singular matrix (ensure N_scalar is not too small)
           if(dabs(N_scalar).lt.1.d-12) then
-            write(*,'(A,E12.4)') ' WARNING: N_scalar too small:', N_scalar
-            N_scalar = -2.d0*vmu
-            write(*,'(A,E12.4)') ' Reset to -2*mu:', N_scalar
+            N_scalar = -2.d0*vmu    ! Use elastic value as fallback
           endif
 c         
 c         Keep Dg for backward compatibility
@@ -268,11 +251,7 @@ c
 c         === BOX 1 STEP 2: Check consistency parameter Δγ^(k+1) ===
           deltag = deltagi
           if(deltag.lt.0.d0) deltag = 0.d0
-c         DEBUG: Print deltag value
-          if(nel_current.eq.1 .and. ig_current.eq.1) then
-            write(*,'(A,I3,A,2E12.4)') ' Step',lstep_current,
-     &        ' deltagi,deltag:', deltagi, deltag
-          endif
+c         Removed debug code for minimal implementation
 
 c         === BOX 1: Update state variables ===
 c         Update plastic strain: εᵖ = εᵖₙ + Δγ·n
@@ -282,9 +261,14 @@ c         Update equivalent plastic strain: α = αₙ + √(2/3)·Δγ
           alpeg_new = alpeg + xi_dp*deltag
 c         Update hardening derivative for updated state
           dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg_new))
-c         Update N_scalar for current state
+c         Update N_scalar for current state (should be negative)
+c         N = -(2μ + κη̄η + ξ²K')
           N_scalar = -(2.d0*vmu + vkp*etabar_dp*eta_dp
      &              + xi_dp*xi_dp*dhard)
+c         Ensure N_scalar is numerically stable
+          if(dabs(N_scalar).lt.1.d-10) then
+            N_scalar = -2.d0*vmu  ! Use elastic value as fallback
+          endif
 c         Update stress: σ = κtr[ε]I + s^tr - √2μΔγn
           sig(:,:) = stry(:,:) - dsqrt(2.d0)*vmu*deltag*oun(:,:)
      &             + (vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)
@@ -300,13 +284,11 @@ c       === BOX 1: Evaluate yield function with updated state ===
         stno = dsqrt(stno)
         hard = hpd*(hk*alpeg_new
      &       +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg_new)))
-c       DEBUG: Print yield function components
-        if(nel_current.eq.1 .and. ig_current.eq.1) then
-          write(*,'(A,I3,A,3E12.4)') ' Step',lstep_current,
-     &      ' q,p,hard:', dsqrt(1.d0/2.d0)*stno, eta_dp*smean, hard
-        endif
+c         Removed debug code for minimal implementation
         g_val = dsqrt(1.d0/2.d0)*stno + eta_dp*smean
      &        - xi_dp*(yld + hard)
+
+c         Removed debug code for minimal implementation
 c
 c       === BOX 1 STEP 3: Compute tangent moduli ===
 c       Use already computed L, M, N matrices
@@ -319,9 +301,11 @@ c       === Compute C matrix (with geometric softening) ===
         endif
 c
 c       === Compute C^ep = C - N^-1 L ⊗ M (Paper equation) ===
-        if(dabs(N_scalar).gt.1.d-16) then
+c       N_scalar should be negative, so N_inv should be negative
+        if(dabs(N_scalar).gt.1.d-10) then
           N_inv = 1.d0 / N_scalar
         else
+c         Use elastic tangent if N_scalar is too small
           N_inv = 0.d0
         endif
 c
@@ -343,10 +327,14 @@ c               C^ep = C - N^-1 L ⊗ M (Paper formulation)
         enddo
 c
 c       === Store values for next iteration ===
-        histi(1) = deltag
-        histi(2) = alpeg_new
-        histi(3) = ftreg
-        kk = 3
+c       NOTE: histi(1)はphexa8からのdelta_gamma_incで使用されるため上書きしない
+        histi(34) = deltag      ! 累積Δγを位置34に保存（次回のdeltag_prev）
+        histi(3) = alpeg_new    ! 更新された相当塑性ひずみ
+        histi(4) = ftreg        ! 降伏関数値
+c       === NEW: Store N_scalar and g_val for delta_gamma calculation ===
+        histi(5) = N_scalar
+        histi(6) = g_val
+        kk = 6
         do jj=1,3
           do ii=1,3
             kk = kk+1
@@ -367,6 +355,13 @@ c       xa = (1/Dg) * (∂gg/∂ε)
             histi(kk) = xa(ii,jj)
           enddo
         enddo
+c       === NEW: Store M_mat for delta_gamma calculation in phexa8 ===
+        do jj=1,3
+          do ii=1,3
+            kk = kk+1
+            histi(kk) = M_mat(ii,jj)
+          enddo
+        enddo
 c
 c       Update alpeg for storage
         alpeg = alpeg_new
@@ -383,6 +378,7 @@ c       Following Yamamoto et al. Box 1: g ≡ 0 for elastic state
 c
 c       === Elastic stress ===
         sig(:,:) = stry(:,:) +vkp*etrs*DELTA(:,:)
+c         Removed debug code for minimal implementation
 c
 c       === Elastic tangent moduli ===
         do ll=1,3
@@ -399,9 +395,10 @@ c       === Elastic tangent moduli ===
         enddo
 c
 c       Store elastic values
-        histi(1) = 0.d0
-        histi(2) = alpeg
-        histi(3) = 0.d0
+c       NOTE: histi(1)はphexa8からのdelta_gamma_incで使用されるため上書きしない
+        histi(34) = 0.d0        ! 弾性状態ではΔγ=0（位置34）
+        histi(3) = alpeg        ! 現在の相当塑性ひずみ（変化なし）
+        histi(4) = 0.d0         ! 弾性状態では降伏関数=0
 c       Store yield function value: 0 for elastic case (Paper eq. 84)
         g_val = gg
       endif

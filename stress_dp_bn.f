@@ -214,7 +214,7 @@ c         M = 2μ(n + β/3*I) = 2μn + 2μβ/3*I (Drucker-Prager)
             enddo
           enddo
 c
-c         N = -{2μ + κβα + 硬化項} (Drucker-Prager specific)
+c         N = -{2μ + κη̄η + ξ²K'} (Drucker-Prager specific)
           N_scalar = -(2.d0*vmu + vkp*etabar_dp*eta_dp
      &              + xi_dp*xi_dp*dhard)
 c         Prevent singular matrix (ensure N_scalar is not too small)

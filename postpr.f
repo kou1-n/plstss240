@@ -190,7 +190,8 @@ c
           if(ierror.ne.0) RETURN
 c
 c       --- Accumulate yield residual norm for BN method ---
-          if(MATYPE.eq.5) then
+c         MATYPE=5: Drucker-Prager BN, MATYPE=6: von Mises BN
+          if(MATYPE.eq.5 .or. MATYPE.eq.6) then
             do ig=1,ngaus
               g_norm = g_norm + g_vals(ig)**2
             enddo

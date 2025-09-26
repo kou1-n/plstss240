@@ -225,7 +225,7 @@ c         === 構成則の呼び出し（材料モデルに応じて分岐） ==
      &                  ierror )
           elseif(MATYPE.eq.5) then
 c           ===================================================
-c           Block Newton法の実装（山本ら2021年の論文に基づく）
+c           Block Newton法の実装
 c           ===================================================
             nel_current = nel
             ig_current = ig
@@ -284,7 +284,69 @@ c
      &                   prope,   sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens, g_vals(ig),
-     &                  ierror,  itr , histi )     
+     &                  ierror,  itr , histi )
+          elseif(MATYPE.eq.6) then
+c           ===================================================
+c           von Mises Block Newton法の実装（山本ら2021年論文）
+c           ===================================================
+            nel_current = nel
+            ig_current = ig
+c
+c           === 反復2回目以降：δγの計算（von Mises版） ===
+c           論文のBOX 2 Step 3.2: δγ = -N^{-1}(M:ε(δu) + g)
+            if(itr.gt.1) then
+c             前回反復から保存された値を取得
+              N_scalar = histi(5)     ! N係数（負値）
+              g_val_prev = histi(6)   ! 前回の降伏関数値
+c
+c             === ひずみ増分の計算：δε = ε^(k) - ε^(k-1) ===
+              kk = 6
+              do jj=1,3
+                do ii=1,3
+                  kk = kk+1
+                  str_prev(ii,jj) = histi(kk)    ! 前回のひずみ
+                  delta_str(ii,jj) = str(ii,jj) - str_prev(ii,jj)
+                enddo
+              enddo
+c
+c             === M行列の取得（histi配列から） ===
+              kk = 24  ! xa値をスキップ（位置16-24）
+              do jj=1,3
+                do ii=1,3
+                  kk = kk+1
+                  M_mat(ii,jj) = histi(kk)  ! M = 2μn（von Mises）
+                enddo
+              enddo
+c
+c             === M:ε(δu)の計算（テンソル内積） ===
+              M_eps = 0.d0
+              do jj=1,3
+                do ii=1,3
+                  M_eps = M_eps + M_mat(ii,jj) * delta_str(ii,jj)
+                enddo
+              enddo
+c
+c             === δγの計算（論文式） ===
+c             δγ = -N^{-1}(M:ε(δu) + g)
+              if(dabs(N_scalar).gt.1.d-12) then
+                delta_gamma_inc = -(M_eps + g_val_prev) / N_scalar
+              else
+                delta_gamma_inc = 0.d0
+              endif
+c
+c             stress_vm_bnに渡すためhisti(1)に保存
+              histi(1) = delta_gamma_inc
+c
+            else
+c             === 初回反復：δγ = 0で初期化（BOX 2 Step 1） ===
+              histi(1) = 0.d0
+            endif
+c
+            CALL stress_vm_bn(itrmax, idepg,
+     &                   prope,   sig,   str, ehist,
+     &                    ctol,  vons, e_dns, p_dns,
+     &                   ctens, g_vals(ig),
+     &                  ierror,  itr , histi )
           else
             STOP 'Something wrong in phexa8'
           endif

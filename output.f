@@ -1,6 +1,6 @@
       subroutine output(    in,   itr,   neq,
      &                   mpstp, muprt, mfprt, mnprt, msprt,
-     &                   mbprt, dfact, unorm, tnorm,
+     &                   mbprt, dfact, unorm, tnorm, isbnm,
      &                    disp, sigma, epsln,   von,  fint,
      &                     eps,  pene,  eene,tene_e,tene_p,
      &                    temp,
@@ -145,10 +145,17 @@ c
 c ***** Output of Some NORMs (NOR_***.txt) *****************************
 c   === Headers ===
       if(in.eq.1) then
-        WRITE(lwd,9301)
+        if(isbnm.eq.1) then
+c         Block Newton法のヘッダー
+          WRITE(lwd,9301)
+        else
+c         Return Mapping法のヘッダー
+          WRITE(lwd,9303)
+        endif
         WRITE(lwd,9302) 0, 0, 0.d0, 0.d0, 0.d0
       endif
- 9301 FORMAT('%Step Iter     dfact          unorm          tnorm')
+ 9301 FORMAT('%Step Iter     dfact          unorm          g_norm')
+ 9303 FORMAT('%Step Iter     dfact          unorm          tnorm')
 c
 c   === Step, # of Iterations, and some Norms ===
       WRITE(lwd,9302) in,itr,dfact,unorm,tnorm

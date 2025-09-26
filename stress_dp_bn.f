@@ -217,6 +217,10 @@ c
 c         N = -{2μ + κη̄η + ξ²K'} (Drucker-Prager specific)
           N_scalar = -(2.d0*vmu + vkp*etabar_dp*eta_dp
      &              + xi_dp*xi_dp*dhard)
+c         N_scalarは必ず負値（論文の定義より）
+          if(N_scalar.gt.-1.d-10) then
+            N_scalar = -2.d0*vmu  ! 最小値を-2μに設定
+          endif
 c         Prevent singular matrix (ensure N_scalar is not too small)
           if(dabs(N_scalar).lt.1.d-12) then
             N_scalar = -2.d0*vmu    ! Use elastic value as fallback
@@ -319,7 +323,8 @@ c               C matrix (elastic + geometric softening)
      &                 - (1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
 c               
 c               C^ep = C - N^-1 L ⊗ M (Paper formulation)
-                ctens(ii,jj,kk,ll) = C_ijkl 
+c               塑性補正項を適用（N_inv=0の時は弾性のみ）
+                ctens(ii,jj,kk,ll) = C_ijkl
      &                             - N_inv * L_mat(ii,jj) * M_mat(kk,ll)
               enddo
             enddo

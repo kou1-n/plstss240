@@ -165,3 +165,51 @@ This repository has been successfully cloned and tested on the following systems
 
 This project's remote repository is hosted at [https://github.com/kou1-n/plstss240](https://github.com/kou1-n/plstss240).
 
+
+## Directory Structure (Updated 2025-01-30)
+
+```
+WORK/
+├── src/                      # Fortran source files (.f)
+├── obj/                      # Compiled object files (generated)
+├── input_files/              # Test input files (.cml)
+├── output/                   # Analysis output files
+├── debug_outputs/            # Debug output and temporary files
+├── data/                     # Reference data files
+├── docs/                     # Documentation and references
+├── tests/                    # Test scripts (future use)
+├── Makefile                  # Build configuration
+├── CLAUDE.md                 # AI assistant instructions
+└── README.md                 # This file
+```
+
+### File Organization
+
+- **Source code**: All  files are in 
+- **Input files**: Test cases are in 
+- **Debug outputs**: Diagnostic files are in 
+- **Build system**: Run `make` from WORK directory (builds from src/)
+
+## Directory Structure (Updated 2025-01-30)
+
+```
+WORK/
+├── src/                      # Fortran source files
+├── obj/                      # Compiled object files
+├── input_files/              # Test input CML files
+├── output/                   # Analysis output files
+├── debug_outputs/            # Debug logs and temporary files
+├── data/                     # Reference data files
+├── docs/                     # Documentation
+├── tests/                    # Test scripts
+├── Makefile                  # Build configuration
+├── CLAUDE.md                 # AI instructions
+└── README.md                 # This file
+```
+
+### Organization Notes
+
+- All Fortran source (*.f) moved to `src/`
+- Test input files moved to `input_files/`
+- Debug outputs separated to `debug_outputs/`
+- Build with `make` from WORK directory

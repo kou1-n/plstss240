@@ -3,6 +3,7 @@ TARGET  =  $(HOME)/bin/plstss2393_nagasaku
 FC = ifort
 # Directory where object files are placed
 OBJDIR = obj
+SRCDIR = src
 
 F90 = $(FC)
 ##### MKL for EM64T #####
@@ -82,6 +83,6 @@ clean:
 
 # Pattern rule to build object files in $(OBJDIR)
 .SUFFIXES: $(SUFFIXES) .f
-$(OBJDIR)/%.o: %.f | $(OBJDIR)
+$(OBJDIR)/%.o: $(SRCDIR)/%.f | $(OBJDIR)
 	$(FC) $(FFLAGS) -c $< -o $@
 

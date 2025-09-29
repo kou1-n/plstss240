@@ -26,6 +26,19 @@ env/
 out
 inp
 
+# Temporary and output directories
+output/*.txt
+output/*.csv
+output/RES_*.cml
+debug_outputs/
+!debug_outputs/.gitkeep
+
+# Object files directory
+obj/
+
+# Embedded git repositories
+docs/HYPLAS_v2.0/
+
 # Prerequisites
 *.d
 
@@ -61,3 +74,5 @@ inp
 
 # Editor backup files
 *~
+tmp_check.py
+.claude/

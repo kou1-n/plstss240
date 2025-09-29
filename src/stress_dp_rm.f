@@ -159,13 +159,16 @@ c         DP FIX: Newton残差の体積項をp_tryに置換
      &       + eta_dp*(p_try - vkp*etabar_dp*deltag)
      &       - xi_dp*(yld +hrdtmp)
 c         ---ggのdeltagによる偏微分
-          Dg = -vmu 
+c         CORRECTED: H = ξ*(∂K/∂α)/√3, NOT ξ²*(∂K/∂α)
+          sqrt3 = dsqrt(3.d0)
+          Dg = -vmu
      &         -eta_dp*vkp*etabar_dp
-     &         -xi_dp*xi_dp*dhdtmp
+     &         -xi_dp*dhdtmp/sqrt3
 c
           deltag = deltag -gg/Dg
 c         --- check convergence
-          alptmp = alpeg + xi_dp*deltag
+c         CORRECTED: Δα = Δγ/√3, NOT ξ*Δγ
+          alptmp = alpeg + deltag/sqrt3
 c
 c         DP塑性でのNewton反復中のdeltag確認（全反復で出力）
 c          write(*,'(A,I3,A,E12.5)') '    Iter[', it, '] deltag = ',
@@ -194,7 +197,7 @@ c    &        '--------------------------------------------------------'
 c         endif
 c
           write(*,'(A,I3,A)') '  Iter[', it, ']:'
-          write(*,'(A,E12.5,A,E12.5)') 
+          write(*,'(A,E12.5,A,E12.5)')
      &      '    gg=', gg, '  Dg=', Dg
           write(*,'(A,E12.5,A,E12.5)')
      &      '    gg/Dg=', gg/Dg, '  |gg/Dg|=', dabs(gg/Dg)
@@ -202,6 +205,9 @@ c
      &      '    deltag=', deltag, '  alptmp=', alptmp
           write(*,'(A,E12.5,A,E12.5)')
      &      '    hrdtmp=', hrdtmp, '  dhdtmp=', dhdtmp
+          write(*,'(A,E12.5,A,E12.5)')
+     &      '    H_correct=', xi_dp*dhdtmp/sqrt3,
+     &      '  H_old(wrong)=', xi_dp*xi_dp*dhdtmp
 c
           if( dabs(gg/Dg).lt.ctol) then
 c           write(*,'(A,I3,A)') 
@@ -257,8 +263,9 @@ c       === DEBUG: Return mapping converged ===
 c       === END DEBUG ===
 c
 c     --- update equivalent plastic strain "alpha"
+c       CORRECTED: Δα = Δγ/√3, NOT ξ*Δγ
         alptmp = alpeg
-        alpeg = alpeg +xi_dp*deltag
+        alpeg = alpeg +deltag/sqrt3
 c
 c       DP塑性でのΔγ（塑性乗数）確認
 c        write(*,'(A,E12.5)') '  DP deltag (Δγ)       = ', deltag
@@ -298,15 +305,20 @@ c       p_n+1 = p_try - K*etabar*Δγ (体積応力更新)
 
 c     --- update consititutive tensor: "ctens"
         dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg))
+c       CORRECTED: H = ξ*(∂K/∂α)/√3, NOT ξ²*(∂K/∂α)
         A = 1.d0/(vmu + vkp*etabar_dp*eta_dp
-     &          + xi_dp*xi_dp*dhard)
+     &          + xi_dp*dhard/sqrt3)
 
 c       === DEBUG: Check consistency tangent coefficients ===
         write(*,'(A)') '  --- Consistent Tangent Diagnostics ---'
         write(*,'(A,E14.6)') '    dhard            = ', dhard
-        write(*,'(A,E14.6)') '    A                = ', A
-        write(*,'(A,E14.6)') '    G+K*eta*etab+xi2*dhard = ',
-     &        vmu + vkp*etabar_dp*eta_dp + xi_dp*xi_dp*dhard
+        write(*,'(A,E14.6)') '    A (corrected)    = ', A
+        write(*,'(A,E14.6)') '    Denominator (corrected) = ',
+     &        vmu + vkp*etabar_dp*eta_dp + xi_dp*dhard/sqrt3
+        write(*,'(A,E14.6)') '    H_correct = ξ*(∂K/∂α)/√3 = ',
+     &        xi_dp*dhard/sqrt3
+        write(*,'(A,E14.6)') '    H_old(wrong) = ξ²*(∂K/∂α) = ',
+     &        xi_dp*xi_dp*dhard
         write(*,'(A,E14.6)') '    K*eta*etabar     = ',
      &        vkp*eta_dp*etabar_dp
         write(*,'(A,E14.6)') '    K*eta*etabar*A   = ',

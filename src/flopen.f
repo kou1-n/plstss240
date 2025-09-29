@@ -2,7 +2,7 @@
 c
       implicit double precision(a-h,o-z)
 c
-      character*30 infem,flname
+      character*50 infem,flname
       character*1 fl
 c
       common /iodev/ lra,lrb,lwa,lwb,lwc,lwd,lwe,lwf
@@ -24,11 +24,11 @@ c
 c
       READ(*,*) flname
 c
-      do 10 i=1,29
-        fl=flname(30-i:30-i+1)
+      do 10 i=1,49
+        fl=flname(50-i:50-i+1)
         if(fl.ne.' ') then
-          infem=flname(1:30-i)
-          ni=30-i
+          infem=flname(1:50-i)
+          ni=50-i
           goto 20
         endif
    10 continue

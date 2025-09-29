@@ -13,7 +13,10 @@
       "Bash(git rm:*)",
       "Bash(cat:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nReorganize directory structure for better maintainability\n\n- Move all Fortran source files (*.f) to src/ directory\n- Move input test files (*.cml) to input_files/ directory  \n- Move debug outputs to debug_outputs/ directory\n- Update Makefile to build from src/ directory\n- Update .gitignore to exclude temporary output files\n- Add directory structure documentation to README.md\n\nThis reorganization reduces root directory clutter from 88 to 13 files,\nimproving code navigation and maintainability.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nReorganize directory structure for better maintainability\n\n- Move all Fortran source files (*.f) to src/ directory\n- Move input test files (*.cml) to input_files/ directory  \n- Move debug outputs to debug_outputs/ directory\n- Update Makefile to build from src/ directory\n- Update .gitignore to exclude temporary output files\n- Add directory structure documentation to README.md\n\nThis reorganization reduces root directory clutter from 88 to 13 files,\nimproving code navigation and maintainability.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(make:*)"
     ],
     "deny": [],
     "ask": []

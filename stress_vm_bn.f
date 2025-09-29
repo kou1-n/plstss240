@@ -143,29 +143,33 @@ c  ===== 塑性状態：Block Newton法による応力更新 =====
       if(ftreg.gt.-ctol) then
         idepg = 1
 c
-c       === BOX 1 STEP 2: Consistency parameter Δγの決定 ===
+c       === BOX 1 STEP 3: Update consistency parameter ===
         if(itr.eq.1) then
-c         === BOX 2 STEP 1: 初期化 ===
-c         論文Box 2 Step 1: Δγ⁽⁰⁾ = 0で初期化
+c         === BOX 2: Initialization (k=0) ===
+c
+c         --- BOX 2 STEP 1: Set initial consistency parameter ---
           deltag = 0.d0
-          alpeg_new = alpeg
-c         初回は弾性応力（Δγ=0）
+c
+c         --- BOX 2 STEP 2: Compute initial stress (elastic predictor) ---
+c         σ_{n+1}^(0) = s^tr + κtr(ε)I
           sig(:,:) = stry(:,:) + vkp*etrs*DELTA(:,:)
-c         初回の降伏関数値を正しく再計算（Δγ=0での応力で）
-c         g = ||ξ|| - √(2/3)(σ_Y + K) where ξ = s - β
-c         Δγ=0なので背応力は前ステップのまま
+c
+c         --- BOX 2 STEP 3: Evaluate initial yield function ---
+c         s^(0) = dev(σ_{n+1}^(0))
           smean = (sig(1,1)+sig(2,2)+sig(3,3))/3.d0
-          sd(:,:) = sig(:,:) - smean*DELTA(:,:)  ! 偏差応力
-c         背応力は前ステップの値（ehist(11:19)）を使用
+          sd(:,:) = sig(:,:) - smean*DELTA(:,:)
+c
+c         ξ^(0) = s^(0) - β_n
           kk = 10
           do ii=1,3
             do jj=1,3
               kk = kk+1
-              betaeg(jj,ii) = ehist(kk)  ! 前ステップの背応力
+              betaeg(jj,ii) = ehist(kk)  ! β_n from previous step
             enddo
           enddo
-c         相対応力ξ = s - β
           sxi(:,:) = sd(:,:) - betaeg(:,:)
+c
+c         ||ξ^(0)||
           stno_new = 0.d0
           do ii=1,3
             do jj=1,3
@@ -173,11 +177,21 @@ c         相対応力ξ = s - β
             enddo
           enddo
           stno_new = dsqrt(stno_new)
-c         硬化関数（前ステップのαで）
+c
+c         K(α_n)
           hard = hpd*(hk*alpeg + (hpa - yld)*(1.d0 - dexp(-hpb*alpeg)))
-c         降伏関数を正しく計算
+c
+c         g^(0) = ||ξ^(0)|| - √(2/3)(σ_Y + K(α_n))
           g_val = stno_new - dsqrt(2.d0/3.d0)*(yld + hard)
-c         流動方向の更新: n = ξ/||ξ|| (Δγ=0での相対応力から)
+c
+c         --- BOX 2 STEP 4: Set initial plastic variables ---
+c         ε^p_{n+1}^(0) = ε^p_n (already in plstrg from ehist)
+c         α_{n+1}^(0) = α_n
+          alpeg_new = alpeg
+c         β_{n+1}^(0) = β_n (already in betaeg)
+c
+c         --- BOX 2 STEP 5: Compute initial flow direction ---
+c         n^(0) = ξ^(0)/||ξ^(0)||
           if(stno_new.gt.1.d-16) then
             do jj=1,3
               do ii=1,3
@@ -188,41 +202,42 @@ c         流動方向の更新: n = ξ/||ξ|| (Δγ=0での相対応力から)
             oun(:,:) = 0.d0
           endif
 c
+c         --- BOX 2 STEP 6: Initialize matrices for tangent computation ---
+c         (L, M, N matrices will be computed below in Step 6)
+c
         else
-c         === BOX 2 STEP 3.3: Δγの更新 ===
+c         === BOX 1 STEP 3: Update consistency parameter ===
 c         Δγ^(k+1) = Δγ^(k) + δγ (phexa8から渡されたδγ増分を使用)
           deltag = deltagi
           if(deltag.lt.0.d0) deltag = 0.d0
 c
-c         === BOX 1: 状態変数の更新 ===
-c         相当塑性ひずみの更新: α = α_n + √(2/3)·Δγ
+c         === BOX 1 STEP 4: Update state variables ===
+c         Step 4.1: 相当塑性ひずみの更新 α_{n+1}^(k) = α_n + √(2/3)Δγ^(k)
           alpeg_new = alpeg + dsqrt(2.d0/3.d0)*deltag
 c
-c         移動硬化の更新のための硬化係数
+c         Step 4.2: 硬化係数の計算 K'(α_{n+1}^(k))
           dhard = hpd*(hk + hpb*(hpa - yld)*dexp(-hpb*alpeg_new))
 c
-c         === BOX 1: 応力更新 ===
-c         σ = κtr[ε]I + s^tr - 2μΔγn
+c         Step 4.3: 仮の応力から相対応力を計算してn^(k)を更新
+c         まず仮の応力を計算: σ_temp = s^tr - 2μΔγn_old + κtr(ε)I
           sig(:,:) = stry(:,:) - 2.d0*vmu*deltag*oun(:,:)
      &             + vkp*etrs*DELTA(:,:)
 c
-c         === BOX 1: 降伏関数gの評価（更新された応力で） ===
+c         偏差応力を計算
           smean = (sig(1,1)+sig(2,2)+sig(3,3))/3.d0
-          sd(:,:) = sig(:,:) - smean*DELTA(:,:)  ! 偏差応力
+          sd(:,:) = sig(:,:) - smean*DELTA(:,:)
 c
-c         背応力の完全再計算（累積ではなく）
-c         β_{n+1} = β_n + (2/3)K'Δγn
-          kk = 10  ! 前ステップの背応力の開始位置
+c         背応力の更新: β_{n+1}^(k) = β_n + (2/3)K'Δγ^(k)n^(k-1)
+          kk = 10
           do ii=1,3
             do jj=1,3
               kk = kk+1
-c             前ステップの背応力から完全に再計算
               betaeg(jj,ii) = ehist(kk)
      &                      + (2.d0/3.d0)*dhard*deltag*oun(jj,ii)
             enddo
           enddo
 c
-c         相対応力ξ = s - β
+c         相対応力ξ^(k) = s^(k) - β_{n+1}^(k)
           sxi(:,:) = sd(:,:) - betaeg(:,:)
           stno_new = 0.d0
           do ii=1,3
@@ -232,34 +247,68 @@ c         相対応力ξ = s - β
           enddo
           stno_new = dsqrt(stno_new)
 c
-c         更新された硬化関数
-          hard_new = hpd*(hk*alpeg_new
-     &             + (hpa - yld)*(1.d0 - dexp(-hpb*alpeg_new)))
-c
-c         降伏関数g = ||ξ|| - √(2/3)(σ_Y + K)
-          g_val = stno_new - dsqrt(2.d0/3.d0)*(yld + hard_new)
-c
-c         流動方向の更新: n = ξ/||ξ||
+c         Step 4.4: 流動方向の更新 n^(k) = ξ^(k)/||ξ^(k)||
           if(stno_new.gt.1.d-16) then
             do jj=1,3
               do ii=1,3
                 oun(ii,jj) = sxi(ii,jj)/stno_new
               enddo
             enddo
+          else
+            oun(:,:) = 0.d0
           endif
+c
+c         Step 4.5: 塑性ひずみの更新 ε^p_{n+1}^(k) = ε^p_n + Δγ^(k)n^(k)
+c         NOTE: 最新のn^(k)を使用
+          kk = 1
+          do ii=1,3
+            do jj=1,3
+              kk = kk+1
+              plstrg(jj,ii) = ehist(kk)
+     &                      + deltag*oun(jj,ii)
+            enddo
+          enddo
+c
+c         Step 4.6: 背応力を最新のn^(k)で再計算
+          kk = 10
+          do ii=1,3
+            do jj=1,3
+              kk = kk+1
+              betaeg(jj,ii) = ehist(kk)
+     &                      + (2.d0/3.d0)*dhard*deltag*oun(jj,ii)
+            enddo
+          enddo
+c
+c         === BOX 1 STEP 5: Update stress and compute yield function ===
+c         Step 5.1: 応力更新 σ_{n+1}^(k) = s^tr - 2μΔγ^(k)n^(k) + κtr(ε)I
+c         NOTE: 最新のn^(k)を使用して応力を再計算
+          sig(:,:) = stry(:,:) - 2.d0*vmu*deltag*oun(:,:)
+     &             + vkp*etrs*DELTA(:,:)
+c
+c         Step 5.2: 偏差応力と相対応力の計算
+          smean = (sig(1,1)+sig(2,2)+sig(3,3))/3.d0
+          sd(:,:) = sig(:,:) - smean*DELTA(:,:)
+c
+c         Step 5.3: ξ^(k) = dev(σ_{n+1}^(k)) - β_{n+1}^(k)
+          sxi(:,:) = sd(:,:) - betaeg(:,:)
+          stno_new = 0.d0
+          do ii=1,3
+            do jj=1,3
+              stno_new = stno_new + sxi(ii,jj)**2
+            enddo
+          enddo
+          stno_new = dsqrt(stno_new)
+c
+c         Step 5.4: 硬化関数K(α_{n+1}^(k))
+          hard_new = hpd*(hk*alpeg_new
+     &             + (hpa - yld)*(1.d0 - dexp(-hpb*alpeg_new)))
+c
+c         Step 5.5: 降伏関数 g^(k) = ||ξ^(k)|| - √(2/3)(σ_Y + K)
+          g_val = stno_new - dsqrt(2.d0/3.d0)*(yld + hard_new)
         endif
 c
-c       === 塑性ひずみの更新（全反復で必要） ===
-        kk = 1  ! plstrgの開始位置をリセット
-        do ii=1,3
-          do jj=1,3
-            kk = kk+1
-            plstrg(jj,ii) = ehist(kk)
-     &                    + deltag*oun(jj,ii)
-          enddo
-        enddo
 c
-c       === BOX 1 STEP 3: 接線剛性の計算 ===
+c       === BOX 1 STEP 6: Compute tangent modulus ===
 c       L, M, N行列の計算（接線剛性用）
 c
 c       L = -2μn (von Mises)

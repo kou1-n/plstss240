@@ -1,0 +1,7 @@
+#!/usr/bin/expect -f
+set timeout 20
+set cmd [lindex $argv 0]
+spawn ssh nagasaku@mie $cmd
+expect "assword:"
+send "10428Kou\r"
+expect eof

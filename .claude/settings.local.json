@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh nagasaku@mie \"cd WORK && sed -n ''214,280p'' debug_phi10.txt\")",
+      "Bash(ssh nagasaku@mie \"cd WORK && tail -50 debug_phi10.txt\")",
+      "Bash(ssh nagasaku@mie \"cd WORK && tail -20 debug_phi15.txt\")",
+      "Bash(ssh nagasaku@mie \"cd WORK && echo ''1elem_phi20'' | timeout 60 ~/bin/plstss2393_nagasaku > debug_phi20.txt 2>&1 && echo ''=== Analysis completed ==='' || echo ''=== Analysis timed out or failed ===''\")",
+      "Bash(ssh nagasaku@mie \"cd WORK && tail -20 debug_phi20.txt\")",
+      "Bash(ssh nagasaku@mie \"cd WORK && cp 1elem_f.cml 1elem_phi20psi10.cml && sed -i ''22s/1.74532E-01 8.72664E-02/3.49066E-01 1.74533E-01/'' 1elem_phi20psi10.cml && echo ''Modified to phi=20deg, psi=10deg:'' && sed -n ''22p'' 1elem_phi20psi10.cml\")",
+      "Bash(ssh nagasaku@mie \"cd WORK && echo ''1elem_phi20psi10'' | timeout 60 ~/bin/plstss2393_nagasaku > output/debug_phi20psi10.txt 2>&1 && echo ''=== Analysis completed ==='' || echo ''=== Analysis timed out or failed ===''\")",
+      "Bash(ssh:*)",
+      "Bash(scp:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

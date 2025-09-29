@@ -9,7 +9,11 @@
       "Bash(ssh nagasaku@mie \"cd WORK && cp 1elem_f.cml 1elem_phi20psi10.cml && sed -i ''22s/1.74532E-01 8.72664E-02/3.49066E-01 1.74533E-01/'' 1elem_phi20psi10.cml && echo ''Modified to phi=20deg, psi=10deg:'' && sed -n ''22p'' 1elem_phi20psi10.cml\")",
       "Bash(ssh nagasaku@mie \"cd WORK && echo ''1elem_phi20psi10'' | timeout 60 ~/bin/plstss2393_nagasaku > output/debug_phi20psi10.txt 2>&1 && echo ''=== Analysis completed ==='' || echo ''=== Analysis timed out or failed ===''\")",
       "Bash(ssh:*)",
-      "Bash(scp:*)"
+      "Bash(scp:*)",
+      "Bash(git rm:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nReorganize directory structure for better maintainability\n\n- Move all Fortran source files (*.f) to src/ directory\n- Move input test files (*.cml) to input_files/ directory  \n- Move debug outputs to debug_outputs/ directory\n- Update Makefile to build from src/ directory\n- Update .gitignore to exclude temporary output files\n- Add directory structure documentation to README.md\n\nThis reorganization reduces root directory clutter from 88 to 13 files,\nimproving code navigation and maintainability.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

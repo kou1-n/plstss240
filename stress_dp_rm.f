@@ -109,10 +109,31 @@ c     DP FIX: 降伏関数の体積項をp_tryに置換
       ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*p_try
      &      - xi_dp*(yld +hard)
 c
-           write(*,'(A,E12.5)') '  ftreg     = ', ftreg      
+           write(*,'(A,E12.5)') '  ftreg     = ', ftreg
 c  ===== PLASTIC CASE
 c          determine the Lagrange multiplier by N.R. iteration =====
       if(ftreg.gt.0.d0) then
+c
+c       === DEBUG: Material parameters and initial state ===
+        write(*,'(A)') '  --- Entering Plastic Correction ---'
+        write(*,'(A,E14.6,A)') '    phi_dp   = ', phi_dp*180.d0/
+     &    3.14159265358979d0, ' deg'
+        write(*,'(A,E14.6,A)') '    psi_dp   = ', psi_dp*180.d0/
+     &    3.14159265358979d0, ' deg'
+        write(*,'(A,E14.6)') '    eta_dp   = ', eta_dp
+        write(*,'(A,E14.6)') '    etabar_dp= ', etabar_dp
+        write(*,'(A,E14.6)') '    xi_dp    = ', xi_dp
+        write(*,'(A,E14.6)') '    G (vmu)  = ', vmu
+        write(*,'(A,E14.6)') '    K (vkp)  = ', vkp
+        write(*,'(A,E14.6)') '    K/G      = ', vkp/vmu
+        write(*,'(A,E14.6)') '    p_try    = ', p_try
+        write(*,'(A,E14.6)') '    ||s_try||= ', stno
+        write(*,'(A,E14.6)') '    alpeg    = ', alpeg
+        write(*,'(A,E14.6)') '    hk       = ', hk
+        write(*,'(A,E14.6)') '    hpa      = ', hpa
+        write(*,'(A,E14.6)') '    hpb      = ', hpb
+c       === END DEBUG ===
+c
 c             write(*,*) 1
         idepg = 1
 c     --- initilization ( Box 3.1. step 1 )
@@ -224,6 +245,17 @@ c       write(*,*)
         RETURN
 c
   210   CONTINUE
+c
+c       === DEBUG: Return mapping converged ===
+        write(*,'(A)') '  --- Return Mapping Converged ---'
+        write(*,'(A,E14.6)') '    Final deltag = ', deltag
+        write(*,'(A,E14.6)') '    sqrt(2)*G*deltag = ',
+     &    dsqrt(2.d0)*vmu*deltag
+        write(*,'(A,E14.6)') '    ||s_try||    = ', stno
+        write(*,'(A,E14.6)') '    Ratio sqrt(2)*G*deltag/||s_try|| = ',
+     &    (dsqrt(2.d0)*vmu*deltag)/stno
+c       === END DEBUG ===
+c
 c     --- update equivalent plastic strain "alpha"
         alptmp = alpeg
         alpeg = alpeg +xi_dp*deltag
@@ -266,11 +298,35 @@ c       p_n+1 = p_try - K*etabar*Δγ (体積応力更新)
 
 c     --- update consititutive tensor: "ctens"
         dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg))
-        A = 1.d0/(vmu + vkp*etabar_dp*eta_dp 
+        A = 1.d0/(vmu + vkp*etabar_dp*eta_dp
      &          + xi_dp*xi_dp*dhard)
+
+c       === DEBUG: Check consistency tangent coefficients ===
+        write(*,'(A)') '  --- Consistent Tangent Diagnostics ---'
+        write(*,'(A,E14.6)') '    dhard            = ', dhard
+        write(*,'(A,E14.6)') '    A                = ', A
+        write(*,'(A,E14.6)') '    G+K*eta*etab+xi2*dhard = ',
+     &        vmu + vkp*etabar_dp*eta_dp + xi_dp*xi_dp*dhard
+        write(*,'(A,E14.6)') '    K*eta*etabar     = ',
+     &        vkp*eta_dp*etabar_dp
+        write(*,'(A,E14.6)') '    K*eta*etabar*A   = ',
+     &        vkp*eta_dp*etabar_dp*A
 
         theta = 1.d0 -(dsqrt(2.d0)*vmu*deltag)/stno !ok
         thetab= (dsqrt(2.d0)*vmu*deltag)/stno - vmu*A !ok
+
+        write(*,'(A,E14.6)') '    theta            = ', theta
+        write(*,'(A,E14.6)') '    thetab           = ', thetab
+        write(*,'(A,E14.6)') '    bulk_coef (1-K*eta*etabar*A) = ',
+     &        1.d0-vkp*eta_dp*etabar_dp*A
+c
+        if(theta .lt. 0.d0) then
+          write(*,'(A)') '    *** WARNING: theta < 0 ***'
+        endif
+        if((1.d0-vkp*eta_dp*etabar_dp*A) .lt. 0.01d0) then
+          write(*,'(A)') '    *** WARNING: bulk stiffness too small ***'
+        endif
+c       === END DEBUG ===
 c
         do ll=1,3
           do kk=1,3

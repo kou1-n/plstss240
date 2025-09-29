@@ -1,0 +1,21 @@
+
+     ************************************************
+     **                                            **
+     **     Welcome to "PLSTss"  Version 2.3       **
+     **                          ( 2012.11.20 )    **
+     **                                            **
+     ************************************************
+
+
+*) Enter the input file name without extension:  
+
+*) Enter the input file name without extension:  forrtl: 致命的なエラー (24): 読み取り中にファイルの最後に達しました。ユニット -4、ファイル /proc/29713/fd/0
+Image              PC                Routine            Line        Source             
+plstss2393_nagasa  0000000006A9CB4B  Unknown               Unknown  Unknown
+plstss2393_nagasa  0000000006ABA3B8  Unknown               Unknown  Unknown
+plstss2393_nagasa  000000000040953C  Unknown               Unknown  Unknown
+plstss2393_nagasa  0000000000404B98  Unknown               Unknown  Unknown
+plstss2393_nagasa  0000000000404432  Unknown               Unknown  Unknown
+libc.so.6          00007F0BFE840E6C  Unknown               Unknown  Unknown
+libc.so.6          00007F0BFE840F35  __libc_start_main     Unknown  Unknown
+plstss2393_nagasa  0000000000404321  Unknown               Unknown  Unknown

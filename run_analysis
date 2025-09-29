@@ -1,0 +1,41 @@
+#!/bin/bash
+# 簡単な解析実行スクリプト
+# 使用方法: ./run_analysis ファイル名（拡張子なし）
+# 例: ./run_analysis 1elem_f
+
+if [ $# -eq 0 ]; then
+    echo "使用方法: ./run_analysis input_name"
+    echo "例: ./run_analysis 1elem_f"
+    echo ""
+    echo "利用可能な入力ファイル:"
+    ls input_files/*.cml 2>/dev/null | sed 's|input_files/||g' | sed 's|.cml||g'
+    exit 1
+fi
+
+INPUT_NAME=$1
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="output/logs/${INPUT_NAME}_${TIMESTAMP}.log"
+
+# ファイルの存在確認
+if [ ! -f "input_files/${INPUT_NAME}.cml" ]; then
+    echo "エラー: input_files/${INPUT_NAME}.cml が見つかりません"
+    exit 1
+fi
+
+echo "解析開始: $INPUT_NAME"
+echo "ログファイル: $LOG_FILE"
+echo "====================================="
+
+# 入力ファイルをコピーして実行
+cp "input_files/${INPUT_NAME}.cml" "${INPUT_NAME}.cml"
+echo "$INPUT_NAME" | ~/bin/plstss2393_nagasaku 2>&1 | tee "$LOG_FILE"
+
+# クリーンアップ
+rm -f "${INPUT_NAME}.cml"
+
+echo ""
+echo "====================================="
+echo "解析完了！"
+echo "ログ: $LOG_FILE"
+echo "結果ファイル:"
+ls output/*${INPUT_NAME}* 2>/dev/null | sed 's|output/||g'

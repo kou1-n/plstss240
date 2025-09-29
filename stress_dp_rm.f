@@ -32,6 +32,10 @@ c ***** Load Deformation Histories *************************************
       enddo
 c     移動硬化は使用しない（等方硬化のみ）
 c
+c     DP塑性でのtr(plstrg)確認（体積塑性ひずみ）
+c      tr_plstrg = plstrg(1,1) + plstrg(2,2) + plstrg(3,3)
+c      write(*,'(A,E12.5)') '  DP tr(plstrg) before = ', tr_plstrg
+c
 c ***** Set Material Properties ****************************************
 c    --- elastic parameters
 c     --- Young modulus
@@ -73,13 +77,22 @@ c ***** Initialization *************************************************
       ctens = 0.d0 ! ctens(:,:,:,:) = 0.d0
 c
 c   === Deviatoric Stress => Trial Stress ===
-c   体積ひずみ（スカラー）（trace of strain tensor）
-      etrs = str(1,1) +str(2,2) +str(3,3)  !ε_v_n+1^tr = tr(ε_n+1)
-c   emean:体積ひずみの平均成分（スカラー）= etrs/3
-      emean = etrs/3.d0
+c   DP FIX: 平均（体積）ひずみ
+      emean  = (str(1,1)+str(2,2)+str(3,3)) / 3.d0
+      epmean = (plstrg(1,1)+plstrg(2,2)+plstrg(3,3)) / 3.d0
 c
-      stry = 2.d0*vmu*(str -emean*DELTA -plstrg) !p366 s_n+1^tr
-c     2G(ε_n+1 - ε_v_n+1^tr*I/3 - ε^p_n)
+c   体積ひずみ（全ひずみのトレース）
+      etrs = str(1,1) +str(2,2) +str(3,3)  !ε_v_n+1^tr = tr(ε_n+1)
+c
+c   DP FIX: 試行平均応力の計算（塑性体積ひずみを考慮）
+c   epv0 = tr(ε^p_n) = 3*epmean (既存変数を活用)
+      epv0 = 3.d0 * epmean  ! 塑性体積ひずみ
+      p_try = vkp * (etrs - epv0)  ! 試行平均応力 p_try = K*(ε_v - ε_v^p)
+c      write(*,'(A,E12.5)') '  DP p_try = K(εv-εvp) = ', p_try
+c
+c   DP FIX: 試行偏差応力（塑性ひずみの体積成分除外）
+      stry = 2.d0*vmu*( (str -emean*DELTA)
+     &                 -(plstrg -epmean*DELTA) )
       stno = 0.d0
       do jj=1,3
         do ii=1,3
@@ -92,9 +105,11 @@ c  === Compute Hardening Function & Yield Function ===
       hard = hpd*(hk*alpeg
      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
 c
-      ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*vkp*etrs 
+c     DP FIX: 降伏関数の体積項をp_tryに置換
+      ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*p_try
      &      - xi_dp*(yld +hard)
 c
+           write(*,'(A,E12.5)') '  ftreg     = ', ftreg      
 c  ===== PLASTIC CASE
 c          determine the Lagrange multiplier by N.R. iteration =====
       if(ftreg.gt.0.d0) then
@@ -102,6 +117,7 @@ c             write(*,*) 1
         idepg = 1
 c     --- initilization ( Box 3.1. step 1 )
         deltag = 0.d0
+c 前回の降伏曲面上にいた状態からのスタートなので，deltag=0でよい
         alptmp = alpeg
 c
 c     --- compute "\Delta gamma" by N.R. iteration
@@ -116,9 +132,10 @@ c         --- K'(\alpha^{(n)}_{n+1})
      &            +hpb*(hpa -yld)*dexp(-hpb*alptmp))
 c
 c         ---gg(8.117 p363)
-          gg = dsqrt(1.d0/2.d0)*stno 
+c         DP FIX: Newton残差の体積項をp_tryに置換
+          gg = dsqrt(1.d0/2.d0)*stno
      &       - vmu*deltag
-     &       + eta_dp*(vkp*etrs - vkp*etabar_dp*deltag)
+     &       + eta_dp*(p_try - vkp*etabar_dp*deltag)
      &       - xi_dp*(yld +hrdtmp)
 c         ---ggのdeltagによる偏微分
           Dg = -vmu 
@@ -128,6 +145,10 @@ c
           deltag = deltag -gg/Dg
 c         --- check convergence
           alptmp = alpeg + xi_dp*deltag
+c
+c         DP塑性でのNewton反復中のdeltag確認（全反復で出力）
+c          write(*,'(A,I3,A,E12.5)') '    Iter[', it, '] deltag = ',
+c     &                               deltag
 c
 c         --- デバッグ用出力（iteration毎に整理）
 c         if(it.eq.1) then
@@ -151,15 +172,15 @@ c           write(*,'(A)')
 c    &        '--------------------------------------------------------'
 c         endif
 c
-c         write(*,'(A,I3,A)') '  Iter[', it, ']:'
-c         write(*,'(A,E12.5,A,E12.5)') 
-c    &      '    gg=', gg, '  Dg=', Dg
-c         write(*,'(A,E12.5,A,E12.5)') 
-c    &      '    gg/Dg=', gg/Dg, '  |gg/Dg|=', dabs(gg/Dg)
-c         write(*,'(A,E12.5,A,E12.5)') 
-c    &      '    deltag=', deltag, '  alptmp=', alptmp
-c         write(*,'(A,E12.5,A,E12.5)') 
-c    &      '    hrdtmp=', hrdtmp, '  dhdtmp=', dhdtmp
+          write(*,'(A,I3,A)') '  Iter[', it, ']:'
+          write(*,'(A,E12.5,A,E12.5)') 
+     &      '    gg=', gg, '  Dg=', Dg
+          write(*,'(A,E12.5,A,E12.5)')
+     &      '    gg/Dg=', gg/Dg, '  |gg/Dg|=', dabs(gg/Dg)
+          write(*,'(A,E12.5,A,E12.5)')
+     &      '    deltag=', deltag, '  alptmp=', alptmp
+          write(*,'(A,E12.5,A,E12.5)')
+     &      '    hrdtmp=', hrdtmp, '  dhdtmp=', dhdtmp
 c
           if( dabs(gg/Dg).lt.ctol) then
 c           write(*,'(A,I3,A)') 
@@ -207,22 +228,40 @@ c     --- update equivalent plastic strain "alpha"
         alptmp = alpeg
         alpeg = alpeg +xi_dp*deltag
 c
+c       DP塑性でのΔγ（塑性乗数）確認
+c        write(*,'(A,E12.5)') '  DP deltag (Δγ)       = ', deltag
+c        write(*,'(A,E12.5)') '  DP alpeg (α_n+1)     = ', alpeg
+c
 c     --- outward unit normal vector in stress space
         oun(:,:) = stry(:,:)/stno
+c     ounもNRによって求められたΔγの値に依存するのでは...？？stryとstnoでは違和感がある
+c     →試行状態の流れベクトルと偏差方向の流れベクトルは同じ方向を向くので問題ない
+c
+c
+c       DP塑性でのtr(oun)確認（偏差方向）
+c        tr_oun = oun(1,1) + oun(2,2) + oun(3,3)
+c        write(*,'(A,E12.5)') '  DP tr(oun)           = ', tr_oun
 c
 c     --- compute the plastic strain et.al.
 c       etrs already computed at the beginning
 c    8.109に基づく偏差ひずみのアップデート        
-        plstrg(:,:) = plstrg(:,:) 
+        plstrg(:,:) = plstrg(:,:)
      &              + deltag*(
-     &              + oun(:,:)*dsqrt(1.d0/2.d0)     
+     &              + oun(:,:)*dsqrt(1.d0/2.d0)
      &              + etabar_dp*DELTA(:,:)/3.d0
      &              ) !ok
+c       DP塑性でのtr(plstrg)確認（更新後、体積変化あり）
+c        tr_plstrg = plstrg(1,1) + plstrg(2,2) + plstrg(3,3)
+c        write(*,'(A,E12.5)') '  DP tr(plstrg) after  = ', tr_plstrg
+c       DP塑性の体積ひずみ増分
+c        tr_delta = deltag * etabar_dp
+c        write(*,'(A,E12.5)') '  DP Δε_v (=Δγ*etabar) = ', tr_delta
 
 
-        sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:) !ok
-     &            +(vkp*etrs - vkp*etabar_dp*deltag)*DELTA(:,:)!ok
-c       p_n+1^tr = vkp*ε_v_n+1^tr = vkp*etrs
+c       DP FIX: 応力更新（塑性時）の体積項をp_tryに置換
+        sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:)
+     &            +(p_try - vkp*etabar_dp*deltag)*DELTA(:,:)
+c       p_n+1 = p_try - K*etabar*Δγ (体積応力更新)
 
 
 c     --- update consititutive tensor: "ctens"
@@ -260,14 +299,16 @@ c          Identify the Trial Stress as Actual One =====
       else
         idepg = 0
 c
-c       etrs already computed at the beginning
-c       if(dabs(etrs).le.1.0d-16) etrs = 0.d0
-        sig(:,:) = stry(:,:) +vkp*etrs*DELTA(:,:)
+c       DP塑性：弾性ケースのdeltag確認（ゼロのはず）
+c        write(*,'(A,E12.5)') '  DP deltag (elastic)  = ', deltag
+c
+c       DP FIX: 応力更新（弾性時）の体積項をp_tryに置換
+c       塑性体積ひずみを考慮してp_try = K*(ε_v - ε_v^p)を使用
+        sig(:,:) = stry(:,:) +p_try*DELTA(:,:)
 c       write(*,*) etrs,ctol
 c       write(*,*) vkp*etrs,'aaa'
 c
 c     --- donot update "ctens" ---
-c     --- ここctens,von-misesと同じにしているけどいいのか・・・
         do ll=1,3
           do kk=1,3
             do jj=1,3

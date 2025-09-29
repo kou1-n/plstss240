@@ -310,7 +310,8 @@ c             === ひずみ増分の計算：δε = ε^(k) - ε^(k-1) ===
               enddo
 c
 c             === M行列の取得（histi配列から） ===
-              kk = 24  ! xa値をスキップ（位置16-24）
+c             histi(7-15): strain, histi(16-24): xa, histi(25-33): M_mat
+              kk = 24  ! M行列は位置25から始まる
               do jj=1,3
                 do ii=1,3
                   kk = kk+1
@@ -347,6 +348,16 @@ c
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens, g_vals(ig),
      &                  ierror,  itr , histi )
+          elseif(MATYPE.eq.7) then
+c           ===================================================
+c           stress_netoルーチンの呼び出し（新しい降伏関数定義）
+c           f = sqrt(3/2)*||s|| - (sigma_y + H)
+c           ===================================================
+            CALL stress_neto(itrmax, idepg,
+     &                   prope,   sig,   str, ehist,
+     &                    ctol,  vons, e_dns, p_dns,
+     &                   ctens,
+     &                  ierror )
           else
             STOP 'Something wrong in phexa8'
           endif

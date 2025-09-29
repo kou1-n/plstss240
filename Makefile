@@ -60,7 +60,7 @@ OBJELM   = $(OBJDIR)/quad4a.o $(OBJDIR)/pquad4.o $(OBJDIR)/hexa8a.o $(OBJDIR)/ph
 OBJSLV   = $(OBJDIR)/constr.o $(OBJDIR)/skylin.o
 OBJPOST  = $(OBJDIR)/update.o $(OBJDIR)/postpr.o $(OBJDIR)/output.o $(OBJDIR)/stored.o $(OBJDIR)/restor.o \
            $(OBJDIR)/stress.o $(OBJDIR)/stress_vm.o $(OBJDIR)/stress_vm_bn.o $(OBJDIR)/st_gtn.o \
-           $(OBJDIR)/stress_dp_bn.o $(OBJDIR)/stress_dp_rm.o $(OBJDIR)/hardfunc.o
+           $(OBJDIR)/stress_dp_bn.o $(OBJDIR)/stress_dp_rm.o $(OBJDIR)/stress_neto.o $(OBJDIR)/hardfunc.o
 #
 #OBJRCM   = genrcm.o
 #

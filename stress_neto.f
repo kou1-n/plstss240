@@ -1,4 +1,4 @@
-      subroutine stress(itrmax, idepg,
+      subroutine stress_neto(itrmax, idepg,
      &                   prope,  sig,   str, ehist,
 c    &                   prope,!plstrg,betaeg, alpeg,
      &                    ctol,  vons, e_dns, p_dns,
@@ -17,7 +17,7 @@ c
 c
       common /fnctn/ DELTA(3,3),EPSLN(3,3,3),FIT(3,3,3,3),DTENS(3,3,3,3)
 c **********************************************************************
-c     write(*,*) 'stress'
+c     write(*,*) 'stress_neto'
 c
 c ***** Load Deformation Histories *************************************
       alpeg = ehist(1)
@@ -34,10 +34,6 @@ c ***** Load Deformation Histories *************************************
           betaeg(jj,ii) = ehist(kk)
         enddo
       enddo
-c
-c     J2塑性でのtr(plstrg)確認
-c     tr_plstrg = plstrg(1,1) + plstrg(2,2) + plstrg(3,3)
-c      write(*,'(A,E12.5)') '  tr(plstrg) before = ', tr_plstrg
 c
 c ***** Set Material Properties ****************************************
 c    --- elastic parameters
@@ -88,7 +84,8 @@ c  === Compute Hardening Function & Yield Function ===
       hard = hpd* hk*alpeg
      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg))
 c
-      ftreg = stno -dsqrt(2.d0/3.d0)*(yld +hard)
+c     Modified yield function: sqrt(3/2)*||s|| - (sigma_y + H)
+      ftreg = dsqrt(3.d0/2.d0)*stno - (yld + hard)
 c
            write(*,'(A,E12.5)') '  ftreg     = ', ftreg
 c  ===== PLASTIC CASE
@@ -118,12 +115,13 @@ c
 c         --- H'(\alpha^{(n)}_{n+1}) -H(\alpha_{n})
           dkdtmp = (1.d0 -hpd)* hk
 c
-          gg = -dsqrt(2.d0/3.d0)*(yld +hrdtmp +tmpkrd)
-     &         +stno -2.d0*vmu*deltag
-          Dg = -2.d0*vmu -(2.d0/3.d0)*(dhdtmp+dkdtmp)
+c         Modified residual for new yield function
+          gg = -(yld + hrdtmp + tmpkrd)
+     &         + dsqrt(3.d0/2.d0)*(stno - 3.d0*vmu*deltag)
+          Dg = -dsqrt(3.d0/2.d0)*3.d0*vmu - (dhdtmp + dkdtmp)
 c
-          deltag = deltag -gg/Dg
-          alptmp = alpeg +dsqrt(2.d0/3.d0)*deltag
+          deltag = deltag - gg/Dg
+          alptmp = alpeg + deltag
 c
 c
           if( dabs(gg/Dg).lt.ctol) then
@@ -138,13 +136,10 @@ c
   210   CONTINUE
 c     --- update equivalent plastic strain "alpha"
         alptmp = alpeg
-        alpeg = alpeg +dsqrt(2.d0/3.d0)*deltag
+        alpeg = alpeg + deltag
 c
 c     --- outward unit normal vector in stress space
         oun(:,:) = seta(:,:)/stno
-c       J2塑性でのtr(oun)確認（流れ方向）
-c        tr_oun = oun(1,1) + oun(2,2) + oun(3,3)
-c        write(*,'(A,E12.5)') '  tr(oun)           = ', tr_oun
 c
 c     --- compute the plastic strain et.al.
         alpd = alpeg -alptmp
@@ -152,12 +147,10 @@ c
         tmpkrd = (1.d0 -hpd)* hk*alpd
         etrs = str(1,1) +str(2,2) +str(3,3)
 c
-        betaeg(:,:) = betaeg(:,:) +dsqrt(2.d0/3.d0)*tmpkrd*oun(:,:)
-        plstrg(:,:) = plstrg(:,:) +deltag*oun(:,:)
-c       J2塑性でのtr(plstrg)確認（更新後）
-c        tr_plstrg = plstrg(1,1) + plstrg(2,2) + plstrg(3,3)
-c        write(*,'(A,E12.5)') '  tr(plstrg) after  = ', tr_plstrg
-        sig(:,:) = stry(:,:) -2.d0*vmu*deltag*oun(:,:)
+c       Modified updates for back stress and plastic strain
+        betaeg(:,:) = betaeg(:,:) + tmpkrd*oun(:,:)
+        plstrg(:,:) = plstrg(:,:) + deltag*dsqrt(3.d0/2.d0)*oun(:,:)
+        sig(:,:) = stry(:,:) - 2.d0*vmu*deltag*oun(:,:)
      &                                 +vkp*etrs*DELTA(:,:)
 c
 c     --- update consititutive tensor: "ctens"
@@ -165,15 +158,16 @@ c     --- update consititutive tensor: "ctens"
         dkard = (1.d0 -hpd)* hk
 c    &        +(hpa -yld)*(1.d0 -dexp(-hpb*alpha  ))
 
-        theta = 1.d0 -(2.d0*vmu*deltag)/stno
-        thetab= 1.d0/(1.d0 +(dhard+dkard)/(3.d0*vmu)) -(1.d0 -theta)
+        theta = 1.d0 - dsqrt(3.d0/2.d0)*(2.d0*vmu*deltag)/stno !ok
+        thetab= 1.d0/(1.d0 +(dhard+dkard)*dsqrt(2.d0/3.d0)/(2.d0*vmu))
+     &          - (1.d0 - theta)
 c
         do ll=1,3
           do kk=1,3
             do jj=1,3
               do ii=1,3
                 ctens(ii,jj,kk,ll)
-     &            = vkp*DELTA(ii,jj)*DELTA(kk,ll)
+     &            = vkp*DELTA(ii,jj)*DELTA(kk,ll)!ok
      &              +2.d0*vmu*theta*( FIT(ii,jj,kk,ll)
      &                       -(1.d0/3.d0)*DELTA(ii,jj)*DELTA(kk,ll) )
      &              -2.d0*vmu*thetab*oun(ii,jj)*oun(kk,ll)

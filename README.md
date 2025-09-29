@@ -166,7 +166,7 @@ This repository has been successfully cloned and tested on the following systems
 This project's remote repository is hosted at [https://github.com/kou1-n/plstss240](https://github.com/kou1-n/plstss240).
 
 
-## Directory Structure (Updated 2025-01-30)
+## Directory Structure (Updated 2025-09-30)
 
 ```
 WORK/
@@ -190,7 +190,7 @@ WORK/
 - **Debug outputs**: Diagnostic files are in 
 - **Build system**: Run `make` from WORK directory (builds from src/)
 
-## Directory Structure (Updated 2025-01-30)
+## Directory Structure (Updated 2025-09-30)
 
 ```
 WORK/

@@ -1,0 +1,12 @@
+Residual Norm Convergence Analysis
+==================================================
+
+Loading Step 13:
+  Total iterations: 2
+  Initial residual: 1.371100E-01
+  Final residual: 3.419000E-15
+  Reduction factor: 2.493618E-14
+
+  Convergence rates:
+    Iteration 2: linear=2.493618E-14, quadratic=1.818699E-13
+

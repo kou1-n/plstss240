@@ -1,5 +1,5 @@
 /TITLE/
-This CML-formatted file was translated by "NEU2CML"                             
+only for assosiate role support ,This CML-formatted file was translated by "NEU2CML"                             
 /COORD/
        8
        1-5.00000000D-01-5.00000000D-01 1.00000000D+00
@@ -19,7 +19,7 @@ This CML-formatted file was translated by "NEU2CML"
  2.00000E+05 0.30000E+00 0.00000E+00 0.00000E+00 0.00000E+00
  0.00000E+00 0.00000E+00 0.00000E+00 0.00000E+00 2.00000E+02
  1.00000E+04 4.00000E+02 0.00000E-01 0.00000E+00 1.00000E+00
- 1.74532E-01 8.72664E-02 0.00000E+00 0.00000E+00 0.00000E+00
+ 1.74532E-01 1.74532E-01 0.00000E+00 0.00000E+00 0.00000E+00
 /EULER/
     1
     1  0.00000E+00  0.00000E+00  0.00000E+00

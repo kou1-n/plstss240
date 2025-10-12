@@ -17,21 +17,48 @@ env/
 .vscode/
 .idea/
 
-# Output files
-#*.png
-#*.txt
-#*.cml
-#*.NEU
-#*.modfem
-out
-inp
+# Analysis output files (root directory)
+DIS_*.txt
+ENE_*.txt
+NOR_*.txt
+STS_*.txt
+TMP_*.txt
+RES_*.cml
+*.log
+uniconp_output.log
 
-# Temporary and output directories
+# Output directory files
 output/*.txt
 output/*.csv
+output/*.log
 output/RES_*.cml
 debug_outputs/
 !debug_outputs/.gitkeep
+
+# Temporary input/output files
+out
+inp
+
+# Data directory temporary files
+data/*.dat
+data/*.f04
+data/*.f06
+data/~$*
+
+# Backup and debug source files
+src/*backup*.f
+src/*debug*.f
+src/*malformed*.f
+src/*before*.f
+src/*mtype*.f
+src/*unsym*.f
+src/*copy*.f
+
+# Test executables
+test_*
+!test_*.f
+!test_*.py
+!test_*.sh
 
 # Object files directory
 obj/
@@ -71,8 +98,32 @@ docs/HYPLAS_v2.0/
 *.exe
 *.out
 *.app
+plstss*
+!plstss*.f
 
 # Editor backup files
 *~
+*.swp
+*.swo
+*#
+
+# Temporary Python scripts
 tmp_check.py
+
+# Claude directory
 .claude/
+
+# Makefile backups
+Makefile_*
+!Makefile_template
+
+# PARDISO verification files
+PARDISO_*.md
+verify_*.f
+check_*.f
+!check_*.patch
+
+# NEU2CML temporary files
+*.NEU
+NEU2CML*
+!NEU2CML.md

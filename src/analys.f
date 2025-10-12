@@ -324,6 +324,11 @@ c               記号的分解、数値分解、求解を実行
      &                        pt, iparm,
      &                    maxfct,  mnum, mtype, phase,  nrhs,
      &                    ierror )
+c           --- PARDISOの解をチェック ---
+c           注意: parsol後、del=解ベクトル(x)となっている
+c           RHSは失われているため、現在は残差チェック不可
+c             CALL check_pardiso(neqm, jdiag, jcolmn, sk,
+c    &                           RHS_SAVED, del, itr)
               jsol = 1
             else
 c           --- 2回目以降の計算 ---
@@ -335,6 +340,11 @@ c               数値分解と求解のみ実行（記号的分解は再利用�
      &                        pt, iparm,
      &                    maxfct,  mnum, mtype, phase,  nrhs,
      &                    ierror )
+c           --- PARDISOの解をチェック ---
+c           注意: parsol後、del=解ベクトル(x)となっている
+c           RHSは失われているため、現在は残差チェック不可
+c             CALL check_pardiso(neqm, jdiag, jcolmn, sk,
+c    &                           RHS_SAVED, del, itr)
             endif
 c
           elseif(isolvr.eq.2) then

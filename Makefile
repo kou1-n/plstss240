@@ -52,7 +52,7 @@ OBJMAIN  = $(OBJDIR)/main.o $(OBJDIR)/flopen.o $(OBJDIR)/analys.o $(OBJDIR)/redc
 OBJPRE   = $(OBJDIR)/chkary.o $(OBJDIR)/estima.o $(OBJDIR)/presky.o $(OBJDIR)/addres.o $(OBJDIR)/inform.o \
            $(OBJDIR)/initia.o $(OBJDIR)/initq4.o $(OBJDIR)/initt3.o $(OBJDIR)/inith8.o $(OBJDIR)/initq8.o \
            $(OBJDIR)/initt6.o $(OBJDIR)/initt4.o $(OBJDIR)/initp1.o
-OBJPARDIS= $(OBJDIR)/prepar.o $(OBJDIR)/rowupr.o $(OBJDIR)/parsol.o $(OBJDIR)/pars00.o $(OBJDIR)/pars99.o $(OBJDIR)/pcgsol.o
+OBJPARDIS= $(OBJDIR)/prepar.o $(OBJDIR)/rowupr.o $(OBJDIR)/parsol.o $(OBJDIR)/pars00.o $(OBJDIR)/pars99.o $(OBJDIR)/pcgsol.o $(OBJDIR)/check_pardiso.o
 OBJASMB  = $(OBJDIR)/forces.o $(OBJDIR)/assemb.o $(OBJDIR)/elastc.o $(OBJDIR)/plastc.o $(OBJDIR)/mapcrs.o $(OBJDIR)/mapsky.o
 OBJELM   = $(OBJDIR)/quad4a.o $(OBJDIR)/pquad4.o $(OBJDIR)/hexa8a.o $(OBJDIR)/phexa8.o $(OBJDIR)/tria3a.o \
            $(OBJDIR)/ptria3.o $(OBJDIR)/pres2d.o $(OBJDIR)/pres3d.o $(OBJDIR)/triap1.o $(OBJDIR)/ptrip1.o \

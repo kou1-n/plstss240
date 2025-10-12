@@ -1,0 +1,16 @@
+--- stress_dp_bn.f.orig
++++ stress_dp_bn.f
+@@ -236,6 +236,13 @@
+ c         4. α(γ_{n+1}^{(0)}) = α(γ_n)
+           alpeg_new = alpeg_old
+ c
++c         === FIX: Initialize hardening for first iteration ===
++c         Without this, g_val becomes undefined in first iteration
++          hard_new = hard
++          dhard_new = dhard
++c         Store correct initial yield residual
++          g_val = gg
++c
+ c         === BOX 2 STEP 2: Compute tangent moduli for first calculation ===
+ c
+ c         L = -C^e : (n + α/3*I) = -2μn - κα/3*I (Drucker-Prager)

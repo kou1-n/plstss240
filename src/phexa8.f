@@ -268,8 +268,40 @@ c             === δγの計算（論文式） ===
 c             δγ = -N^{-1}(M:ε(δu) + g)
               if(dabs(N_scalar).gt.1.d-12) then
                 delta_gamma_inc = -(M_eps + g_val_prev) / N_scalar
+c
+c               === ダンピング機構：弾塑性遷移時の発散防止 ===
+c               初回塑性修正時（前回Δγ=0）は控えめな増分を使用
+                deltag_prev = histi(34)
+                if(dabs(deltag_prev).lt.1.d-16.and.
+     &             dabs(delta_gamma_inc).gt.1.d-4) then
+c                 初回塑性ステップ：1%に減衰（より強い制限）
+                  delta_gamma_inc = 0.01d0 * delta_gamma_inc
+                endif
+c
+c               === 絶対値制限：過大な増分を防ぐ ===
+                delta_gamma_max = 1.d-4
+                if(dabs(delta_gamma_inc).gt.delta_gamma_max) then
+                  delta_gamma_inc = dsign(delta_gamma_max,
+     &                                     delta_gamma_inc)
+                endif
               else
                 delta_gamma_inc = 0.d0
+              endif
+c
+c             === DEBUG: Delta gamma calculation (Paper eq. 51) ===
+              if(itr.le.10 .and. dabs(delta_gamma_inc).gt.0.d0) then
+                write(*,'(A)') ' '
+                write(*,'(A,I3,A,I3,A)') '=== PHEXA8: GP ', nnn,
+     &                                    ', Iter ', itr, ' ==='
+                write(*,'(A,E12.5)') '  M:eps(du) = ', M_eps
+                write(*,'(A,E12.5)') '  g_val_prev = ', g_val_prev
+                write(*,'(A,E12.5)') '  N_scalar = ', N_scalar
+                write(*,'(A,E12.5)') '  Raw delta_gamma = ',
+     &                                -(M_eps + g_val_prev) / N_scalar
+                write(*,'(A,E12.5)') '  Final delta_gamma_inc = ',
+     &                                delta_gamma_inc
+                write(*,'(A,E12.5)') '  deltag_prev = ', deltag_prev
+                write(*,'(A)') '================================='
               endif
 c
 c             stress_dp_bnに渡すためhisti(1)に保存

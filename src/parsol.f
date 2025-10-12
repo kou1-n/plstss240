@@ -11,6 +11,7 @@ c
 c
       integer nn,mm,ierror,NGSK,nsolvr,idum,msol1
       integer maxfct,mnum,mtype,phase,nrhs,msglvl
+      integer i,j,k
 c
       integer ia(nn+1)
       integer ja(nsolvr),perm(nn)
@@ -21,6 +22,7 @@ c
 c
       double precision aa(NGSK)
       double precision bb(nn),xx(nn)
+      double precision r_temp, r_norm, b_norm, x_norm
 c
 c **********************************************************************
 CC
@@ -199,6 +201,33 @@ c     CALL pardiso(    pt,maxfct,   mnum, mtype, phase,
 c    &                 nn,   dum,   idum,  idum,  idum,
 c    &               nrhs, iparm, msglvl,   dum,   dum,
 c    &             ierror )
+c
+c ****** Check PARDISO Solution (before overwriting bb) ****************
+c     At this point: bb = RHS, xx = solution
+c     Simple residual check: compute ||Ax-b||
+      r_norm = 0.d0
+      b_norm = 0.d0
+      x_norm = 0.d0
+      do i = 1, nn
+        r_temp = 0.d0
+        do k = ia(i), ia(i+1)-1
+          j = ja(k)
+          r_temp = r_temp + aa(k) * xx(j)
+        enddo
+        r_norm = r_norm + (r_temp - bb(i))**2
+        b_norm = b_norm + bb(i)**2
+        x_norm = x_norm + xx(i)**2
+      enddo
+      r_norm = dsqrt(r_norm)
+      b_norm = dsqrt(b_norm)
+      x_norm = dsqrt(x_norm)
+
+      if(b_norm.gt.1.d-20) then
+        write(*,'(A,E12.5,A,E12.5,A,E12.5)')
+     &    '  PARDISO: ||Ax-b||=', r_norm,
+     &    ', ||b||=', b_norm,
+     &    ', Rel.err=', r_norm/b_norm
+      endif
 c
 c ****** Update the Solution Vector "del" ******************************
       do mm=1,nn

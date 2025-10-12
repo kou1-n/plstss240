@@ -45,7 +45,7 @@ c     --- Block Newton variables (1-variable system for D-P) ---
 c     --- L, M, N matrices for Box 2 formulation ---
       dimension L_mat(3,3), M_mat(3,3)
       REAL*8 N_scalar, A_coeff, bulk_coef, C_ijkl
-      REAL*8 psig_factor
+      REAL*8 psig_factor, N_elastic
 c     --- Drucker-Prager parameters ---
       REAL*8 eta_dp, xi_dp, etabar_dp, phi_dp, psi_dp
 c     --- 作業変数 ---
@@ -235,6 +235,37 @@ c            (plstrg already loaded from ehist - no change needed)
 c
 c         4. α(γ_{n+1}^{(0)}) = α(γ_n)
           alpeg_new = alpeg_old
+c         === FIX: Initialize hardening for first iteration ===
+c         Without this, g_val becomes undefined in first iteration
+          hard_new = hard
+          dhard_new = dhard
+c         Store correct initial yield residual
+          g_val = gg
+c
+c         === 初回塑性ステップの安定化 ===
+c         初めて塑性域に入る場合は、g_valを減衰させる
+          if(gg.gt.0.d0 .and. alpeg_old.lt.1.d-16) then
+c           初回塑性：g_valを1%に減衰して安定化
+            g_val = 0.01d0 * gg
+          endif
+c
+c         === DEBUG OUTPUT for BOX 2 initialization (Paper monitoring) ===
+          if(idepg.eq.1 .and. itr.le.10) then
+            write(*,'(A)') ' '
+            write(*,'(A,I3,A)') '=== BOX 2 INIT: Iter ', itr, ' ==='
+            write(*,'(A,E12.5)') '  Trial yield f^tr = ', gg
+            write(*,'(A,E12.5)') '  ||s^tr|| = ', stno
+            write(*,'(A,E12.5)') '  p^tr = ', etrs
+            write(*,'(A,E12.5)') '  alpeg_old = ', alpeg_old
+            write(*,'(A,E12.5)') '  Hard H(alpha) = ', hard
+            write(*,'(A,E12.5)') '  dH/dalpha = ', dhard
+            write(*,'(A,E12.5)') '  Initial g_val = ', g_val
+            write(*,'(A,E12.5)') '  Initial deltag = ', deltag
+            write(*,'(A,E12.5,A,E12.5)') '  eta_dp = ', eta_dp,
+     &                           ', xi_dp = ', xi_dp
+            write(*,'(A,E12.5,A,E12.5)') '  etabar_dp = ', etabar_dp,
+     &                           ', yld = ', yld
+          endif
 c
 c         === BOX 2 STEP 2: Compute tangent moduli for first calculation ===
 c
@@ -256,18 +287,37 @@ c         M = 2μ(n + β/3*I) = 2μn + 2μβ/3*I (Drucker-Prager)
 c
 c         N = -{2μ + κη̄η + ξ*K'/√3} (CORRECTED from stress_dp_rm.f)
           N_scalar = -(2.d0*vmu + vkp*etabar_dp*eta_dp
-     &              + xi_dp*dhard/sqrt3)
+     &              + xi_dp*dhard_new/sqrt3)
 c         N_scalarは必ず負値（論文の定義より）
+c         相対的な閾値を使用して数値的安定性を確保
+          N_elastic = -2.d0*vmu
           if(N_scalar.gt.-1.d-10) then
-            N_scalar = -2.d0*vmu  ! 最小値を-2μに設定
+            N_scalar = N_elastic  ! 最小値を-2μに設定
           endif
-c         Prevent singular matrix (ensure N_scalar is not too small)
-          if(dabs(N_scalar).lt.1.d-12) then
-            N_scalar = -2.d0*vmu    ! Use elastic value as fallback
+c         相対閾値：弾性値の0.1%を基準
+          if(dabs(N_scalar).lt.1.d-3*dabs(N_elastic)) then
+            N_scalar = N_elastic    ! Use elastic value as fallback
           endif
 c
 c         Keep Dg for backward compatibility
           Dg = N_scalar
+c
+c         === DEBUG: Matrix components (Paper eq. 47-50) ===
+          if(idepg.eq.1 .and. itr.le.10) then
+            write(*,'(A)') '--- Matrix Components (Box 2 Step 2) ---'
+            write(*,'(A,E12.5)') '  2*mu = ', 2.d0*vmu
+            write(*,'(A,E12.5)') '  kappa = ', vkp
+            write(*,'(A,E12.5)') '  N_scalar = ', N_scalar
+            write(*,'(A,E12.5)') '  N_elastic = ', N_elastic
+            write(*,'(A,3E12.5)') '  L_mat(1,:) = ',
+     &                            L_mat(1,1), L_mat(1,2), L_mat(1,3)
+            write(*,'(A,3E12.5)') '  M_mat(1,:) = ',
+     &                            M_mat(1,1), M_mat(1,2), M_mat(1,3)
+            write(*,'(A,E12.5)') '  oun(1,1) = ', oun(1,1)
+            write(*,'(A,E12.5)') '  oun(2,2) = ', oun(2,2)
+            write(*,'(A,E12.5)') '  oun(3,3) = ', oun(3,3)
+            write(*,'(A)') '================================='
+          endif
         else
 c         === BOX 1 STEP 2: Block Newton (no local iteration) ===
 c         Following Yamamoto et al.: direct state update without local Newton
@@ -275,6 +325,17 @@ c
 c         === Check consistency parameter Δγ^(k+1) ===
           deltag = deltagi
           if(deltag.lt.0.d0) deltag = 0.d0
+c
+c         === DEBUG: BOX 1 iteration state (Paper monitoring) ===
+          if(idepg.eq.1 .and. itr.le.10) then
+            write(*,'(A)') ' '
+            write(*,'(A,I3,A)') '=== BOX 1: Iter ', itr, ' ==='
+            write(*,'(A,E12.5)') '  delta_gamma_inc = ', delta_gamma_inc
+            write(*,'(A,E12.5)') '  deltag_prev = ', deltag_prev
+            write(*,'(A,E12.5)') '  deltag (cumul) = ', deltag
+            write(*,'(A,E12.5)') '  alpeg_old = ', alpeg_old
+            write(*,'(A,E12.5)') '  ftri (prev f) = ', ftri
+          endif
 c
 c         === BOX 1: Update state variables INCREMENTALLY ===
 c         CORRECTED: Use only the increment delta_gamma_inc, not cumulative
@@ -294,6 +355,14 @@ c         Update hardening for NEW state
           hard_new = hpd*(hk*alpeg_new
      &         +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg_new)))
           dhard_new = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg_new))
+c
+c         === DEBUG: State after update ===
+          if(idepg.eq.1 .and. itr.le.10) then
+            write(*,'(A)') '  --- After state update ---'
+            write(*,'(A,E12.5)') '  alpeg_new = ', alpeg_new
+            write(*,'(A,E12.5)') '  hard_new = ', hard_new
+            write(*,'(A,E12.5)') '  dhard_new = ', dhard_new
+          endif
 c
 c         === Update L, M, N matrices for current iteration ===
 c         L = -C^e : (n + α/3*I) = -2μn - κα/3*I (Drucker-Prager)
@@ -316,9 +385,21 @@ c         Update N_scalar for current state (CORRECTED)
 c         N = -(2μ + κη̄η + ξ*K'/√3)
           N_scalar = -(2.d0*vmu + vkp*etabar_dp*eta_dp
      &              + xi_dp*dhard_new/sqrt3)
-c         Ensure N_scalar is numerically stable
-          if(dabs(N_scalar).lt.1.d-10) then
-            N_scalar = -2.d0*vmu  ! Use elastic value as fallback
+c         Ensure N_scalar is numerically stable (相対閾値)
+          N_elastic = -2.d0*vmu
+          if(dabs(N_scalar).lt.1.d-3*dabs(N_elastic)) then
+            N_scalar = N_elastic  ! Use elastic value as fallback
+          endif
+c
+c         === DEBUG: Updated N_scalar ===
+          if(idepg.eq.1 .and. itr.le.10) then
+            write(*,'(A)') '  --- Updated N_scalar ---'
+            write(*,'(A,E12.5)') '  N_scalar = ', N_scalar
+            write(*,'(A,E12.5)') '  Term1: -2mu = ', -2.d0*vmu
+            write(*,'(A,E12.5)') '  Term2: -kappa*eta*etabar = ',
+     &                            -vkp*etabar_dp*eta_dp
+            write(*,'(A,E12.5)') '  Term3: -xi*dH/sqrt3 = ',
+     &                            -xi_dp*dhard_new/sqrt3
           endif
 c
 c         Update stress with increment: σ = κtr[ε]I + s^tr - √2μΔγn
@@ -342,6 +423,16 @@ c         === Evaluate yield function with updated state ===
           stno = dsqrt(stno)
           g_val = dsqrt(1.d0/2.d0)*stno + eta_dp*smean
      &          - xi_dp*(yld + hard_new)
+c
+c         === DEBUG: Yield function evaluation ===
+          if(idepg.eq.1 .and. itr.le.10) then
+            write(*,'(A)') '  --- Yield function g(u,gamma) ---'
+            write(*,'(A,E12.5)') '  ||s|| after update = ', stno
+            write(*,'(A,E12.5)') '  p after update = ', smean
+            write(*,'(A,E12.5)') '  g_val (residual) = ', g_val
+            write(*,'(A,E12.5)') '  Relative |g|/yld = ',
+     &                            dabs(g_val)/yld
+          endif
         endif
 c
 c       === BOX 1 STEP 3: Compute tangent moduli ===

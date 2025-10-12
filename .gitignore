@@ -45,6 +45,16 @@ data/*.f04
 data/*.f06
 data/~$*
 
+# Femap output files
+*.op2
+*.mon1
+*.mon2
+*.mon3
+data/*.op2
+data/*.mon1
+data/*.mon2
+data/*.mon3
+
 # Backup and debug source files
 src/*backup*.f
 src/*debug*.f

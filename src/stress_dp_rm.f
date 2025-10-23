@@ -262,7 +262,7 @@ c
 c     --- update equivalent plastic strain "alpha"
 c       CORRECTED: Δα = Δγ/√3, NOT ξ*Δγ
         alptmp = alpeg
-        alpeg = alpeg +xi_dp*deltag/sqrt3
+        alpeg = alpeg +deltag/sqrt3
 c
 c       DP塑性でのΔγ（塑性乗数）確認
 c        write(*,'(A,E12.5)') '  DP deltag (Δγ)       = ', deltag

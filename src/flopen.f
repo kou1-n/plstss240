@@ -12,7 +12,7 @@ c
   100 FORMAT(/,
      &   5x,'************************************************',
      & /,5x,'**                                            **',
-     & /,5x,'**     Welcome to "PLSTss"  Version 2.3       **',
+     & /,5x,'**     Welcome to "PLSTss"  Version 2.2       **',
      & /,5x,'**                          ( 2012.11.20 )    **',
      & /,5x,'**                                            **',
      & /,5x,'************************************************')
@@ -45,7 +45,7 @@ c     === Output File in CML-format ===
       flname = 'RES_'//infem(1:ni)//'.cml'
       OPEN(lwa,file=flname,status='unknown')
       WRITE(lwa,'(a7)') '/TITLE/'
-      WRITE(lwa,*) 'PLSTss ver. 2.3'
+      WRITE(lwa,*) 'PLSTss ver. 2.2'
       WRITE(lwa,'(a7)') '/LASTD/'
 c
 c     === Output File for Stress-Strain Curve ===

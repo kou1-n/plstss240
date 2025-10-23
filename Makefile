@@ -71,7 +71,7 @@ OBJALL = $(OBJMAIN) $(OBJPRE) $(OBJPARDIS) $(OBJASMB) $(OBJELM) $(OBJSLV) $(OBJP
 # --------------------------------------
 $(TARGET): $(OBJALL)
 	$(FC) $(FFLAGS) $(MKL) $(OBJALL) -o $(TARGET) $(MKL)
-	@echo make PLSTss Version 2.2 done.
+	@echo "PLSTss Version 2.2 build completed [Compiled: `date '+%Y-%m-%d %H:%M:%S'`]"
 
 # ensure object directory exists
 $(OBJDIR):

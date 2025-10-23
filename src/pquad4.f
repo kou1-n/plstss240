@@ -92,12 +92,12 @@ c
 c       === Set Deformation Histtories ===
           ehist(:) = dhist0(:,ig,nel)
 c
-c       === Compute Local Stresses (Drucker-Prager) ===
-          CALL stress_dp_bn(itrmax, idepg,
+c       === Compute Local Stresses ===
+          CALL stress(itrmax, idepg,
      &                 prope,  sig,   str, ehist,
      &                  ctol,  vons, e_dns, p_dns,
      &                 ctens,
-     &                ierror,  itr , histi )
+     &                ierror )
           if(ierror.ne.0) RETURN
 c
 c ***** Store Deformation Histories (at current state) *****************

@@ -47,7 +47,7 @@ c **********************************************************************
 c     write(*,*) 'stress'
 c
 c ***** Load Deformation Histories *************************************
-      alpeg = ehist(1) !前の時刻ｎでのα
+      alpeg = ehist(1)
       kk = 1
       do ii=1,3
         do jj=1,3
@@ -61,7 +61,7 @@ c
       deltagi = histi(1)
       hydsi   = histi(2)
       dmgi    = histi(3)
-      kkki    = histi(4) !イテレーションiでのα
+      kkki    = histi(4)
       kk=8
       do jj=1,3
         do ii=1,3

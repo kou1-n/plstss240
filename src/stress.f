@@ -35,10 +35,6 @@ c ***** Load Deformation Histories *************************************
         enddo
       enddo
 c
-c     J2塑性でのtr(plstrg)確認
-c     tr_plstrg = plstrg(1,1) + plstrg(2,2) + plstrg(3,3)
-c      write(*,'(A,E12.5)') '  tr(plstrg) before = ', tr_plstrg
-c
 c ***** Set Material Properties ****************************************
 c    --- elastic parameters
 c     --- Young modulus
@@ -71,7 +67,7 @@ c
 c   === Deviatoric Stress => Trial Stress ===
       emean = (str(1,1) +str(2,2) +str(3,3))/3.d0
 c
-      stry = 2.d0*vmu*(str -emean*DELTA -plstrg)
+      stry = 2.d0*vmu*( (str -emean*DELTA) -plstrg)
       !stry(:,:) = 2.d0*vmu*(str(:,:) -emean*DELTA(:,:) -plstrg(:,:))
       seta = stry -betaeg
       !seta(:,:) = stry(:,:) -betaeg(:,:)
@@ -89,13 +85,14 @@ c  === Compute Hardening Function & Yield Function ===
      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg))
 c
       ftreg = stno -dsqrt(2.d0/3.d0)*(yld +hard)
+c      write(*,*) 'ftreg = ', ftreg
 c
-           write(*,'(A,E12.5)') '  ftreg     = ', ftreg
 c  ===== PLASTIC CASE
 c          determine the Lagrange multiplier by N.R. iteration =====
       if(ftreg.gt.0.d0) then
 c             write(*,*) 1
         idepg = 1
+c        print *,"PLASTIC"
 c     --- initilization ( Box 3.1. step 1 )
         deltag = 0.d0
         alptmp = alpeg
@@ -123,6 +120,7 @@ c
           Dg = -2.d0*vmu -(2.d0/3.d0)*(dhdtmp+dkdtmp)
 c
           deltag = deltag -gg/Dg
+c          print '("Update deltag=",e25.15)',deltag
           alptmp = alpeg +dsqrt(2.d0/3.d0)*deltag
 c
 c
@@ -142,21 +140,15 @@ c     --- update equivalent plastic strain "alpha"
 c
 c     --- outward unit normal vector in stress space
         oun(:,:) = seta(:,:)/stno
-c       J2塑性でのtr(oun)確認（流れ方向）
-c        tr_oun = oun(1,1) + oun(2,2) + oun(3,3)
-c        write(*,'(A,E12.5)') '  tr(oun)           = ', tr_oun
 c
 c     --- compute the plastic strain et.al.
         alpd = alpeg -alptmp
 c
         tmpkrd = (1.d0 -hpd)* hk*alpd
         etrs = str(1,1) +str(2,2) +str(3,3)
-c
+c===Neto  BOX7.5 p290 step
         betaeg(:,:) = betaeg(:,:) +dsqrt(2.d0/3.d0)*tmpkrd*oun(:,:)
         plstrg(:,:) = plstrg(:,:) +deltag*oun(:,:)
-c       J2塑性でのtr(plstrg)確認（更新後）
-c        tr_plstrg = plstrg(1,1) + plstrg(2,2) + plstrg(3,3)
-c        write(*,'(A,E12.5)') '  tr(plstrg) after  = ', tr_plstrg
         sig(:,:) = stry(:,:) -2.d0*vmu*deltag*oun(:,:)
      &                                 +vkp*etrs*DELTA(:,:)
 c
@@ -186,6 +178,7 @@ c  ===== ELASTIC CASE:
 c          Identify the Trial Stress as Actual One =====
       else
         idepg = 0
+c        print *,"ELASTIC"
 c
         etrs = str(1,1) +str(2,2) +str(3,3)
 c       if(dabs(etrs).le.1.0d-16) etrs = 0.d0
@@ -262,6 +255,7 @@ c ***** Store Deformation Histories ************************************
           ehist(kk) = betaeg(jj,ii)
         enddo
       enddo
+c      write(*,*) plstrg
 c
 c
 c **********************************************************************

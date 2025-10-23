@@ -63,9 +63,6 @@ c    --- plastic parameters
      &                                 (3.d0 - sin(phi_dp)) )
       etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
      &                                  (3.d0 - sin(psi_dp)) )
-      ! eta_dp   = 1.d0
-      ! xi_dp    = 1.d0
-      ! etabar_dp = 1.d0
 c
 c    --- thermal parameters
       row = prope(3)
@@ -265,7 +262,7 @@ c
 c     --- update equivalent plastic strain "alpha"
 c       CORRECTED: Δα = Δγ/√3, NOT ξ*Δγ
         alptmp = alpeg
-        alpeg = alpeg +deltag/sqrt3
+        alpeg = alpeg +xi_dp*deltag/sqrt3
 c
 c       DP塑性でのΔγ（塑性乗数）確認
 c        write(*,'(A,E12.5)') '  DP deltag (Δγ)       = ', deltag

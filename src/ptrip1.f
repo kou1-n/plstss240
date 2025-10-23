@@ -138,11 +138,11 @@ c   === Compute the Averaged Volumetric Strain ===
       emstr = (str(1,1)+str(2,2)+str(3,3))/3.d0
 c
 c   === Compute Averaged Volumetoric Stresses ===
-      CALL stress_dp_bn(itrmax, idepg,
+      CALL stress(itrmax, idepg,
      &             prope,  sig,   str, ehist,
      &              ctol,  vons, e_dns, p_dns,
      &             ctens,
-     &            ierror,  itr , histi )
+     &            ierror )
       if(ierror.ne.0) RETURN
 c
       smean = ( sig(1,1) +sig(2,2) +sig(3,3) )/3.d0
@@ -212,12 +212,12 @@ c ***** Compute Local Deviatoric Stresses ******************************
 c   === Set Deformation Histtories ===
         ehist(:) = dhist0(:,ig,nel)
 c
-c   === Compute Local Stresses (Drucker-Prager) ===
-        CALL stress_dp_bn(itrmax, idepg,
+c   === Compute Local Stresses ===
+        CALL stress(itrmax, idepg,
      &               prope,  sig,   str, ehist,
      &                ctol,  vons, e_dns, p_dns,
      &               ctens,
-     &              ierror,  itr , histi )
+     &              ierror )
         if(ierror.ne.0) RETURN
 c
 c   === Clean up Volumetric Part ===

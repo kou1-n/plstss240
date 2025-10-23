@@ -2,7 +2,7 @@
 c
       implicit double precision(a-h,o-z)
 c
-      character*50 infem,flname
+      character*30 infem,flname
       character*1 fl
 c
       common /iodev/ lra,lrb,lwa,lwb,lwc,lwd,lwe,lwf
@@ -24,11 +24,11 @@ c
 c
       READ(*,*) flname
 c
-      do 10 i=1,49
-        fl=flname(50-i:50-i+1)
+      do 10 i=1,29
+        fl=flname(30-i:30-i+1)
         if(fl.ne.' ') then
-          infem=flname(1:50-i)
-          ni=50-i
+          infem=flname(1:30-i)
+          ni=30-i
           goto 20
         endif
    10 continue
@@ -42,30 +42,30 @@ c     === Input file in CML-format ===
       OPEN(lra,file=flname,status='old',err=1000)
 c
 c     === Output File in CML-format ===
-      flname = 'output/RES_'//infem(1:ni)//'.cml'
+      flname = 'RES_'//infem(1:ni)//'.cml'
       OPEN(lwa,file=flname,status='unknown')
       WRITE(lwa,'(a7)') '/TITLE/'
       WRITE(lwa,*) 'PLSTss ver. 2.3'
       WRITE(lwa,'(a7)') '/LASTD/'
 c
 c     === Output File for Stress-Strain Curve ===
-      flname = 'output/STS_'//infem(1:ni)//'.txt'
+      flname = 'STS_'//infem(1:ni)//'.txt'
       OPEN(lwb,file=flname,status='unknown')
 c
 c     === Output File for Nodal Displacements & Forces ===
-      flname = 'output/DIS_'//infem(1:ni)//'.txt'
+      flname = 'DIS_'//infem(1:ni)//'.txt'
       OPEN(lwc,file=flname,status='unknown')
 c
 c     === Output File for Some Norms ===
-      flname = 'output/NOR_'//infem(1:ni)//'.txt'
+      flname = 'NOR_'//infem(1:ni)//'.txt'
       OPEN(lwd,file=flname,status='unknown')
 c
 c     === Output File for Plastic & Elastic Energy ===
-      flname = 'output/ENE_'//infem(1:ni)//'.txt'
+      flname = 'ENE_'//infem(1:ni)//'.txt'
       OPEN(lwe,file=flname,status='unknown')
 c
 c     === Output File for Temperature ===
-      flname = 'output/TMP_'//infem(1:ni)//'.txt'
+      flname = 'TMP_'//infem(1:ni)//'.txt'
       OPEN(lwf,file=flname,status='unknown')
 c
 c     === Input File for Renumbered DOF ===

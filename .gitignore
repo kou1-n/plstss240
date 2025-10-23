@@ -136,4 +136,4 @@ check_*.f
 # NEU2CML temporary files
 *.NEU
 NEU2CML*
-!NEU2CML.md
+!NEU2CML.mddata/*.modfem

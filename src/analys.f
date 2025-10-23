@@ -16,27 +16,6 @@ c
      &                  secslv,
      &                  ierror )
 c
-c **********************************************************************
-c     非線形有限要素解析の主制御サブルーチン
-c
-c     機能:
-c     1. 増分載荷制御
-c     2. Newton-Raphson反復による非線形方程式の求解
-c     3. 全体剛性行列の組み立てと連立方程式の求解
-c     4. 収束判定（平衡条件と降伏条件）
-c     5. Block Newton法での同時収束制御（MATYPE=5）
-c
-c     処理の流れ:
-c     - 初期設定
-c     - 載荷ステップループ（増分載荷）
-c       - Newton-Raphson反復ループ
-c         - 全体剛性行列の組み立て
-c         - 連立方程式の求解
-c         - 内力計算と応力更新
-c         - 収束判定
-c     - 結果出力
-c **********************************************************************
-c
       implicit double precision (a-h,o-z)
 c
       real*4 sec,sec0,sec1
@@ -91,9 +70,6 @@ c     --- arrays and parameters for PARDISO solver ---
       integer iparm(64)
       integer maxfct,  mnum, mtype, phase,  nrhs
 c
-c     --- logical variables for convergence checking ---
-      logical equilibrium_converged, yield_converged
-c
       common /iodev/ lra,lrb,lwa,lwb,lwc,lwd,lwe,lwf
       common /basic/ nx,nelx,ndf,node,nsn,lmat,lang,ngaus
       common /bound/ lnum,locc,nspc,mpc,npoin,npres,nbody,ntn
@@ -101,7 +77,6 @@ c
       common /cntrl/ nstep,istart,iarc,itrobj,incomp
       common /tvalu/ ctol,stol,switch
       common /print/ lpstp,luprt,lfprt,lnprt,lsprt,lbprt
-      common /debug_info/ nel_current, ig_current, lstep_current
 c
 c **********************************************************************
       arc = 0.d0
@@ -184,8 +159,7 @@ c      write(*,*) jcolmn
 c     CALL CPU_TIME(  sec1)
 c     WRITE(*,102) sec1-sec0
 c
-c ****** 全外力ベクトルの計算 ******************************************
-c     節点荷重、表面荷重、体積力を統合して全体外力ベクトルを構築
+c ****** Compute Total External Force Vector etc. **********************
       CALL forces(   neq,
      &               ijk,  nfix,  ndir,
      &            npload,nsload,  ijkl,
@@ -203,8 +177,7 @@ c
       dfact = 0.d0
       dfact0= 0.d0
 c
-c ***** 解析のための初期設定 ********************************************
-c     形状関数の微分、ヤコビアン行列等の初期計算
+c ***** Initial Settings for Computation *******************************
       CALL initia(  NGSK,   neq,  neqm, NGSKo,  neqo,
      &               ijk,   mpe,  mang,  mdof,  idof,
      &             jdiag,index0,index1,jcolmn, melem,
@@ -213,49 +186,47 @@ c     形状関数の微分、ヤコビアン行列等の初期計算
      &            ierror )
       if(ierror.ne.0) RETURN
 c
-c ****** 変形履歴の初期化 **********************************************
-      tene_p = 0.d0                    ! 塑性散逸エネルギー
-      dhist0 = 0.d0                    ! 前ステップの履歴変数
-      dhist1 = 0.d0                    ! 現ステップの履歴変数
-      histi0 = 0.d0                    ! Block Newton用履歴
+c ****** Initialize Deformation Histories ******************************
+      tene_p = 0.d0
+      dhist0 = 0.d0 ! dhist0(:,:,:) = 0.d0
+      dhist1 = 0.d0 ! dhist1(:,:,:) = 0.d0
+      histi0 = 0.d0
 c
-      idep0 = 0                        ! 前ステップの塑性フラグ
-      idep1 = 0                        ! 現ステップの塑性フラグ
+      idep0 = 0 ! idep0(:,:) = 0
+      idep1 = 0 ! idep1(:,:) = 0
 c
-c     ----- 初期温度の設定 -----
-      temp = 0.d0                      ! 温度（熱連成解析用）
+c     ----- Set Initial Temperature -----
+      temp = 0.d0 ! temp(:) = 0.d0
 c
 c     write(*,*) l_beg,l_end
 c ***************************************
-c ***** 増分載荷ループ開始 **************
+c ***** START Incremental Procedure *****
 c ***************************************
       do 1000 in=l_beg,l_end
 c
         WRITE(*,8001) in,l_end
-c       --- 現在の載荷ステップを記録（デバッグ用） ---
-        lstep_current = in
 c
-c     ----- 載荷パラメータの制御 -----
-        df = finc(in)                 ! 増分載荷係数
+c     ----- Control Loading Parameter -----
+        df = finc(in)
 c
  1400 CONTINUE
 c
-c     ----- 変位増分の初期化 -----
-        du = 0.d0                      ! Δu = 0
+c     ----- Initilize Displacement Increment -----
+        du = 0.d0 ! du(:) = 0.d0
 c
-c     ----- このステップでの初期荷重増分の設定 -----
-        res = df*foc                   ! 残差 = Δf * F_external
+c     ----- Set Iinitial Load Increment in this Loading Step -----
+        res = df*foc ! res(:) = df*foc(:)
 c       write(*,*) res
 c
-        itrmax = 20                    ! 最大反復回数
+        itrmax = 20
 c       /////////////////////////////////////////
-c      //// Newton-Raphson反復開始 /////////////
+c      //// START Newton-Raphson Iteration /////
 c     /////////////////////////////////////////
         do 2000 itr=1,itrmax
 c
           WRITE(*,8002) itr
 c
-c ****** 全体剛性行列の組み立て ****************************************
+c ****** Assemble the Global Stiffness Matrix: SK **********************
 c         WRITE(*,101)
 c         CALL CPU_TIME(  sec0)
           CALL assemb(  NGSK,   neq,  neqm, NGSKo,  neqo,
@@ -275,9 +246,8 @@ c       write(*,*) det_g(1,1)
 c       write(*,*) ''
 c       write(*,*) 'CLEAR ASSEMB'
 c
-c ****** 強制変位を等価節点力に変換 ***********************************
+c ****** Convert Enforced Displacement to the Equivalent Force *********
           if(itr.eq.1) then
-c           初回反復：境界条件の処理
             CALL constr(  NGSK,   neq,  neqm, NGSKo,  neqo,
      &                    mdof,  idof, jdiag,index0,index1,
      &                      df,
@@ -286,7 +256,7 @@ c           初回反復：境界条件の処理
             if(ierror.ne.0) RETURN
 c
           else
-c           2回目以降：力ベクトルの並び替え
+c       ( Re-order the Total Force Vector )
             do ne=1,neq
               m_ne = mdof(ne)
               del(m_ne) = res(ne)
@@ -307,32 +277,27 @@ c         do ne=1,neq
 c           write(*,*) ne,del(ne)
 c         enddo
 c
-c ****** 線形連立方程式の求解 ******************************************
-c         K * δu = R （剛性方程式）
+c ****** Solve Linear Equations ****************************************
 c         WRITE(*,103)
 c         CALL CPU_TIME(  sec0)
 c         sec_10 = dble(sec0)
 c
           if(isolvr.eq.1) then
-c       ===== PARDISOソルバー（Intel MKL直接法） =====
+c       ===== PARDISO Solver =====
             if(jsol.eq.0) then
-c           --- 初回計算時の処理 ---
-c               記号的分解、数値分解、求解を実行
+c           --- Just for First Computation 
+c                 Analysis, Symbolic fact., Numerical fact. & Solve
+c                 Controling parameters are set in the following
               CALL pars00(  neqm,  NGSK,nsolvr, msol1,
      &                     jdiag,jcolmn,iw_neq,
      &                        sk,   del,dw_sol,
      &                        pt, iparm,
      &                    maxfct,  mnum, mtype, phase,  nrhs,
      &                    ierror )
-c           --- PARDISOの解をチェック ---
-c           注意: parsol後、del=解ベクトル(x)となっている
-c           RHSは失われているため、現在は残差チェック不可
-c             CALL check_pardiso(neqm, jdiag, jcolmn, sk,
-c    &                           RHS_SAVED, del, itr)
               jsol = 1
             else
-c           --- 2回目以降の計算 ---
-c               数値分解と求解のみ実行（記号的分解は再利用）
+c           --- for the latter computation
+c                 Numerical factorization & Solve
               phase = 23
               CALL parsol(  neqm,  NGSK,nsolvr, msol1,
      &                     jdiag,jcolmn,iw_neq,
@@ -340,15 +305,10 @@ c               数値分解と求解のみ実行（記号的分解は再利用�
      &                        pt, iparm,
      &                    maxfct,  mnum, mtype, phase,  nrhs,
      &                    ierror )
-c           --- PARDISOの解をチェック ---
-c           注意: parsol後、del=解ベクトル(x)となっている
-c           RHSは失われているため、現在は残差チェック不可
-c             CALL check_pardiso(neqm, jdiag, jcolmn, sk,
-c    &                           RHS_SAVED, del, itr)
             endif
 c
           elseif(isolvr.eq.2) then
-c       ===== 前処理付き共役勾配法（PCG）ソルバー =====
+c       ===== RCI CG Solver =====
             tolsol = 1.d-10
             CALL pcgsol(  neqm,  NGSK,nsolvr, msol1,
      &                   jdiag,jcolmn,
@@ -357,7 +317,7 @@ c       ===== 前処理付き共役勾配法（PCG）ソルバー =====
      &                  ierror )
 c
           elseif(isolvr.eq.0) then
-c       ===== スカイライン法ソルバー（バンド行列用） =====
+c       ===== SKYLINE Solver =====
             ntt = 0
             CALL skylin(    sk,   del, jdiag,     1,  neqm,   ntt)
           endif
@@ -367,8 +327,7 @@ c         sec_11 = dble(sec1)
 c         secslv = sec_11-sec_10
 c         WRITE(*,102),sec1 -sec0
 c
-c ****** 変位とポテンシャルの更新 **************************************
-c         u^(k+1) = u^(k) + δu
+c ****** Update the Displacement and Potentials ************************
           CALL update(   neq,
      &                  idof,
      &                   del,    du,    u0,    u1,
@@ -386,9 +345,7 @@ c         do nn=1,nx
 c           write(*,'(i5,1p3e12.4)') nn,(del(ndf*(nn-1)+kk),kk=1,ndf)
 c         enddo
 c
-c ****** 内力および応力・ひずみの計算 **********************************
-c         各要素で応力積分を実行し、内力ベクトルを計算
-c         Block Newton法の場合はg_norm（降伏関数ノルム）も計算
+c ****** Compute the Internal Forces etc *******************************
 c         WRITE(*,104)
 c         CALL CPU_TIME(  sec0)
           CALL postpr(   neq,
@@ -398,7 +355,7 @@ c         CALL CPU_TIME(  sec0)
      &                 epsln,   von,  fint,dhist0,dhist1,
      &                   eps,  pene,  eene,
      &                tene_e,dene_p,  temp, dtemp, tempd,
-     &                dndx_g, det_g,ctensg, g_norm,
+     &                dndx_g, det_g,ctensg,
      &                ierror, itr , histi0)
           if(ierror.ne.0) RETURN
 c         CALL CPU_TIME(  sec1)
@@ -426,13 +383,13 @@ C            GOTO 1400
 C          endif
 C          itres = 0
 c
-c       ===== 残差力とそのノルムの計算 =====
-          fnorm = 0.d0       ! 外力ノルム
-          rnorm = 0.d0       ! 残差ノルム
-          tnorm = 0.d0       ! 全外力ノルム
-          unorm = 0.d0       ! 変位ノルム
-          anorm = 0.d0       ! 内力ノルム
-          dfact = dfact0 +df ! 累積載荷係数
+c       ===== Compute the Residual Forces & Their Norms =====
+          fnorm = 0.d0
+          rnorm = 0.d0
+          tnorm = 0.d0
+          unorm = 0.d0
+          anorm = 0.d0
+          dfact = dfact0 +df
 c         write(*,*) dfact
           do ne=1,neq
             fnorm = fnorm +(df*foc(ne))**2
@@ -440,7 +397,6 @@ c         write(*,*) dfact
             tnorm = tnorm +(dfact*foc(ne))**2
 c           write(*,'(i5,3e20.9)') ne,fint(ne),dfact*foc(ne),res(ne)
             if(ncp(ne).eq.0) then
-c             残差 = 外力 - 内力
               res(ne) = dfact*foc(ne) -fint(ne)
               rnorm = rnorm +res(ne)**2
 c           write(*,'(i5,3e20.9)') ne,fint(ne),dfact*foc(ne),res(ne)
@@ -454,58 +410,18 @@ c         do ne=1,neq
 c           write(*,'(2i5,3e25.16)') ne,ncp(ne),res(ne)
 c         enddo
 c
-c       ===== 収束判定 =====
-c       相対残差ノルム ||R||/||F|| < ctol で収束
+c       ===== Check the Convergence =====
           if(dsqrt(fnorm).lt.ctol) then
-            if(dsqrt(anorm).lt.ctol) then
-c             外力と内力が両方小さすぎる場合
-              fnorm = 1.d0
-            else
-              fnorm = anorm
-            endif
+c           fnorm = 1.d0
+            fnorm = anorm
           endif
-c       === ゼロ除算の防止 ===
-          if(fnorm.gt.0.d0) then
-            rbf = dsqrt(rnorm/fnorm)  ! 相対残差
-          else
-            rbf = dsqrt(rnorm)
-          endif
+c
+          rbf = dsqrt(rnorm/fnorm)
           WRITE(*,8004) df,dfact,arc
+          WRITE(*,8003) dsqrt(rnorm),dsqrt(fnorm),rbf
 c
-c       --- Block Newton法使用時の特別処理 (MATYPE=5,6) ---
-          isbnm = 0
-          do imat=1,lmat
-c           MATYPE=5: Drucker-Prager Block Newton
-c           MATYPE=6: von Mises Block Newton
-            if(matid(imat).eq.5 .or. matid(imat).eq.6) isbnm = 1
-          enddo
-c
-          if(isbnm.eq.1) then
-c         --- Block Newton法：平衡条件と降伏条件の同時収束判定 ---
-c         ||Rf||/||F|| : 平衡条件の相対残差
-c         ||Rg|| : 降伏関数のL2ノルム
-            WRITE(*,8006) dsqrt(rnorm),dsqrt(fnorm),rbf,g_norm
-          else
-c         --- 通常のReturn Mapping法の出力 ---
-            WRITE(*,8003) dsqrt(rnorm),dsqrt(fnorm),rbf
-          endif
-c
-c         === 収束判定基準（論文のBOX 2式77,79） ===
-          if(isbnm.eq.1) then
-c           Block Newton法: 平衡条件と降伏条件の両方が収束する必要がある
-c           ||Rf||₂ ≤ hf ||F^ext||₂ （平衡条件）
-c           ||Rg||₂ ≤ hg （降伏条件）
-            equilibrium_converged = rbf.lt.ctol
-            yield_converged = g_norm.lt.ctol
-            if(equilibrium_converged .and. yield_converged) then
-              WRITE(*,*) 'Block Newton: Both criteria satisfied'
-              GOTO 1500
-            endif
-          else
-c           標準的なReturn Mapping法: 平衡条件のみ判定
-            if(rbf.lt.ctol) then
-              GOTO 1500
-            endif
+          if(rbf.lt.ctol) then
+            GOTO 1500
           endif
 c
  2000   CONTINUE
@@ -513,12 +429,12 @@ c
         ierror = 20
         RETURN
 c       //////////////////////////////////////////
-c      //// Newton-Raphson反復終了 /////////////
+c      //// END of Newton-Raphson Iteration /////
 c     //////////////////////////////////////////
 c
  1500   CONTINUE
 c
-c ****** 変形履歴の更新と保存 ******************************************
+c ****** Update & Store the Deformation Histories **********************
         histi0 = 0.d0        
         tene_p = tene_p +dene_p
         temp = temp +tempd ! temp(:) = temp(:) +tempd(:)
@@ -532,24 +448,13 @@ c
 c ****** Output the Computed Results ***********************************
 c       WRITE(*,106)
 c       CALL CPU_TIME(  sec0)
-c       Block Newton法の場合、g_normを渡す。通常はtnormを渡す
-        if(isbnm.eq.1) then
-          CALL output(    in,   itr,   neq,
-     &                 mpstp, muprt, mfprt, mnprt, msprt,
-     &                 mbprt, dfact, unorm, g_norm, isbnm,
-     &                    u1, sigma, epsln,   von,  fint,
-     &                   eps,  pene,  eene,tene_e,tene_p,
-     &                  temp,
-     &                ierror )
-        else
-          CALL output(    in,   itr,   neq,
-     &                 mpstp, muprt, mfprt, mnprt, msprt,
-     &                 mbprt, dfact, unorm, tnorm, isbnm,
-     &                    u1, sigma, epsln,   von,  fint,
-     &                   eps,  pene,  eene,tene_e,tene_p,
-     &                  temp,
-     &                ierror )
-        endif
+        CALL output(    in,   itr,   neq,
+     &               mpstp, muprt, mfprt, mnprt, msprt,
+     &               mbprt, dfact, unorm, tnorm,
+     &                  u1, sigma, epsln,   von,  fint,
+     &                 eps,  pene,  eene,tene_e,tene_p,
+     &                temp,
+     &              ierror )
         if(ierror.ne.0) RETURN
 c       CALL CPU_TIME(  sec1)
 c       WRITE(*,102) sec1 -sec0
@@ -589,10 +494,6 @@ c
 c
  8005 FORMAT(5x,'##### Unloading has happened !! ',i3,' #####',/,
      &       8x,'Computation will REstart with elastic stiffness')
-c
- 8006 FORMAT('      rnorm :',e12.5,', fnorm : ',e12.5,/,
-     &       '   ||Rf||/||F|| : ',e12.5,', ||Rg|| : ',e12.5,
-     &       ' [Block Newton]')
 c **********************************************************************
 c **********************************************************************
       RETURN

@@ -4,32 +4,8 @@
      &                  dhist0,dhist1,
      &                   e_ene, p_ene,tene_e,dene_p, tempe,
      &                   dtemp,dtempe,
-     &                  dndx_g, det_g,ctensg, g_vals,
+     &                  dndx_g, det_g,ctensg,
      &                  ierror, itr, histi0 )
-c
-c **********************************************************************
-c     8節点六面体要素の要素計算サブルーチン
-c
-c     機能:
-c     1. ガウス積分点での応力・ひずみ計算
-c     2. 要素剛性行列の計算
-c     3. 内力ベクトルの計算
-c     4. Block Newton法でのδγ計算（MATYPE=5の場合）
-c
-c     入力:
-c     - nel: 要素番号
-c     - xe: 要素節点座標
-c     - ue: 要素節点変位
-c     - prope: 材料定数
-c     - MATYPE: 材料モデルタイプ
-c     - itr: 反復回数
-c
-c     出力:
-c     - finte: 内力ベクトル
-c     - sts, stn: 要素平均応力・ひずみ
-c     - ctensg: 接線剛性テンソル
-c     - g_vals: 降伏関数値（Block Newton用）
-c **********************************************************************
 c
       implicit double precision (a-h,o-z)
 c
@@ -38,7 +14,6 @@ c
       dimension ctensg(3,3,3,3,ngaus,nelx)
       dimension dhist0(20,ngaus,nelx),dhist1(20,ngaus,nelx)
       dimension histi0(50,ngaus,nelx)
-      dimension g_vals(ngaus)
 c
       dimension idep(8)
 c
@@ -47,19 +22,15 @@ c
       dimension wg(2),xg(2)
       dimension dxdl(3,3),dldx(3,3),
      &          sig(3,3),sts(3,3),str(3,3),stn(3,3),
-     &          sd(3,3),stry(3,3),oun(3,3),seta(3,3),
-     &          str_prev(3,3), delta_str(3,3), M_mat(3,3)
+     &          sd(3,3),stry(3,3),oun(3,3),seta(3,3)
       dimension ctens(3,3,3,3)
-      REAL*8 N_scalar, g_val_prev, M_eps, delta_gamma_inc
       dimension finte(24)
       dimension ehist(20)
       dimension histi(50)
 c
       common /tvalu/ ctol,stol
-      common /debug_info/ nel_current, ig_current, lstep_current
 c **********************************************************************
-c　収束が悪いのでitrmaxを増やした2025年8月23日
-      itrmax = 50
+      itrmax = 20
 c
       wg(1) = 1.d0
       wg(2) = 1.d0
@@ -77,8 +48,6 @@ c
 c
       sts = 0.d0 ! sts(:,:) = 0.d0
       stn = 0.d0 ! stn(:,:) = 0.d0
-c     Initialize yield function values for BN method
-      g_vals = 0.d0
 c
 c ***** Set Material Properties ****************************************
 c    --- thermal parameters
@@ -86,12 +55,7 @@ c     row = prope(3)
 c     ccc = prope(4)
 c     aaa = prope(5)
 c
-c ***** ガウス積分開始（2×2×2=8点積分） ****************************
-c     各積分点で以下を実行:
-c     1. 形状関数の微分を計算
-c     2. ひずみテンソルを計算
-c     3. 構成則を呼び出して応力と接線剛性を取得
-c     4. 内力ベクトルと剛性行列に積分
+c ***** Start Numerical Integration ************************************
       ig = 0
       do 100 ix=1,2
         xl = xg(ix)
@@ -180,9 +144,7 @@ c               dndx_g(ndia,ia,ig,nel) = dndxj
 c             enddo
 c           enddo
 c
-c       === ひずみテンソルの計算 ===
-c           ε_ij = 1/2(u_i,j + u_j,i)
-c           節点変位と形状関数微分から計算
+c       === Compute the Local Strain Tensor ===
             do jj=1,ndf
               do ii=1,ndf
                 eij = 0.d0
@@ -198,7 +160,8 @@ c         === Set Deformation Histtories ===
             ehist(:) = dhist0(:,ig,nel)
             histi(:) = histi0(:,ig,nel)
 c
-c         === 構成則の呼び出し（材料モデルに応じて分岐） ===
+c         === Compute Local Stresses ===
+c            print'("--------------------------------ig=",2I5)',ig,MATYPE
           if( MATYPE.eq.1) then
             CALL stress(itrmax, idepg,
      &                   prope,   sig,   str, ehist,
@@ -211,181 +174,8 @@ c         === 構成則の呼び出し（材料モデルに応じて分岐） ==
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
      &                  ierror, itr, histi )
-          elseif(MATYPE.eq.3) then
-            CALL stress_vm(itrmax, idepg,
-     &                   prope,   sig,   str, ehist,
-     &                    ctol,  vons, e_dns, p_dns,
-     &                   ctens,
-     &                  ierror, itr, histi )
           elseif(MATYPE.eq.4) then
             CALL stress_dp_rm(itrmax, idepg,
-     &                   prope,   sig,   str, ehist,
-     &                    ctol,  vons, e_dns, p_dns,
-     &                   ctens,
-     &                  ierror )
-          elseif(MATYPE.eq.5) then
-c           ===================================================
-c           Block Newton法の実装
-c           ===================================================
-            nel_current = nel
-            ig_current = ig
-c
-c           === 反復2回目以降：δγの計算 ===
-c           論文のBOX 2 Step 3.2: δγ = -N^{-1}(M:ε(δu) + g)
-            if(itr.gt.1) then
-c             前回反復から保存された値を取得
-              N_scalar = histi(5)     ! N係数（負値）
-              g_val_prev = histi(6)   ! 前回の降伏関数値
-c
-c             === ひずみ増分の計算：δε = ε^(k) - ε^(k-1) ===
-              kk = 6
-              do jj=1,3
-                do ii=1,3
-                  kk = kk+1
-                  str_prev(ii,jj) = histi(kk)    ! 前回のひずみ
-                  delta_str(ii,jj) = str(ii,jj) - str_prev(ii,jj)
-                enddo
-              enddo
-c
-c             === M行列の取得（histi配列から） ===
-              kk = 24  ! xa値をスキップ（位置16-24）
-              do jj=1,3
-                do ii=1,3
-                  kk = kk+1
-                  M_mat(ii,jj) = histi(kk)  ! M = 2μ(n + β/3*I)
-                enddo
-              enddo
-c
-c             === M:ε(δu)の計算（テンソル内積） ===
-              M_eps = 0.d0
-              do jj=1,3
-                do ii=1,3
-                  M_eps = M_eps + M_mat(ii,jj) * delta_str(ii,jj)
-                enddo
-              enddo
-c
-c             === δγの計算（論文式） ===
-c             δγ = -N^{-1}(M:ε(δu) + g)
-              if(dabs(N_scalar).gt.1.d-12) then
-                delta_gamma_inc = -(M_eps + g_val_prev) / N_scalar
-c
-c               === ダンピング機構：弾塑性遷移時の発散防止 ===
-c               初回塑性修正時（前回Δγ=0）は控えめな増分を使用
-                deltag_prev = histi(34)
-                if(dabs(deltag_prev).lt.1.d-16.and.
-     &             dabs(delta_gamma_inc).gt.1.d-4) then
-c                 初回塑性ステップ：1%に減衰（より強い制限）
-                  delta_gamma_inc = 0.01d0 * delta_gamma_inc
-                endif
-c
-c               === 絶対値制限：過大な増分を防ぐ ===
-                delta_gamma_max = 1.d-4
-                if(dabs(delta_gamma_inc).gt.delta_gamma_max) then
-                  delta_gamma_inc = dsign(delta_gamma_max,
-     &                                     delta_gamma_inc)
-                endif
-              else
-                delta_gamma_inc = 0.d0
-              endif
-c
-c             === DEBUG: Delta gamma calculation (Paper eq. 51) ===
-              if(itr.le.10 .and. dabs(delta_gamma_inc).gt.0.d0) then
-                write(*,'(A)') ' '
-                write(*,'(A,I3,A,I3,A)') '=== PHEXA8: GP ', nnn,
-     &                                    ', Iter ', itr, ' ==='
-                write(*,'(A,E12.5)') '  M:eps(du) = ', M_eps
-                write(*,'(A,E12.5)') '  g_val_prev = ', g_val_prev
-                write(*,'(A,E12.5)') '  N_scalar = ', N_scalar
-                write(*,'(A,E12.5)') '  Raw delta_gamma = ',
-     &                                -(M_eps + g_val_prev) / N_scalar
-                write(*,'(A,E12.5)') '  Final delta_gamma_inc = ',
-     &                                delta_gamma_inc
-                write(*,'(A,E12.5)') '  deltag_prev = ', deltag_prev
-                write(*,'(A)') '================================='
-              endif
-c
-c             stress_dp_bnに渡すためhisti(1)に保存
-              histi(1) = delta_gamma_inc
-c
-            else
-c             === 初回反復：δγ = 0で初期化（BOX 2 Step 1） ===
-              histi(1) = 0.d0
-            endif
-c
-            CALL stress_dp_bn(itrmax, idepg,
-     &                   prope,   sig,   str, ehist,
-     &                    ctol,  vons, e_dns, p_dns,
-     &                   ctens, g_vals(ig),
-     &                  ierror,  itr , histi )
-          elseif(MATYPE.eq.6) then
-c           ===================================================
-c           von Mises Block Newton法の実装（山本ら2021年論文）
-c           ===================================================
-            nel_current = nel
-            ig_current = ig
-c
-c           === 反復2回目以降：δγの計算（von Mises版） ===
-c           論文のBOX 2 Step 3.2: δγ = -N^{-1}(M:ε(δu) + g)
-            if(itr.gt.1) then
-c             前回反復から保存された値を取得
-              N_scalar = histi(5)     ! N係数（負値）
-              g_val_prev = histi(6)   ! 前回の降伏関数値
-c
-c             === ひずみ増分の計算：δε = ε^(k) - ε^(k-1) ===
-              kk = 6
-              do jj=1,3
-                do ii=1,3
-                  kk = kk+1
-                  str_prev(ii,jj) = histi(kk)    ! 前回のひずみ
-                  delta_str(ii,jj) = str(ii,jj) - str_prev(ii,jj)
-                enddo
-              enddo
-c
-c             === M行列の取得（histi配列から） ===
-c             histi(7-15): strain, histi(16-24): xa, histi(25-33): M_mat
-              kk = 24  ! M行列は位置25から始まる
-              do jj=1,3
-                do ii=1,3
-                  kk = kk+1
-                  M_mat(ii,jj) = histi(kk)  ! M = 2μn（von Mises）
-                enddo
-              enddo
-c
-c             === M:ε(δu)の計算（テンソル内積） ===
-              M_eps = 0.d0
-              do jj=1,3
-                do ii=1,3
-                  M_eps = M_eps + M_mat(ii,jj) * delta_str(ii,jj)
-                enddo
-              enddo
-c
-c             === δγの計算（論文式） ===
-c             δγ = -N^{-1}(M:ε(δu) + g)
-              if(dabs(N_scalar).gt.1.d-12) then
-                delta_gamma_inc = -(M_eps + g_val_prev) / N_scalar
-              else
-                delta_gamma_inc = 0.d0
-              endif
-c
-c             stress_vm_bnに渡すためhisti(1)に保存
-              histi(1) = delta_gamma_inc
-c
-            else
-c             === 初回反復：δγ = 0で初期化（BOX 2 Step 1） ===
-              histi(1) = 0.d0
-            endif
-c
-            CALL stress_vm_bn(itrmax, idepg,
-     &                   prope,   sig,   str, ehist,
-     &                    ctol,  vons, e_dns, p_dns,
-     &                   ctens, g_vals(ig),
-     &                  ierror,  itr , histi )
-          elseif(MATYPE.eq.7) then
-c           ===================================================
-c           stress_netoルーチンの呼び出し（新しい降伏関数定義）
-c           f = sqrt(3/2)*||s|| - (sigma_y + H)
-c           ===================================================
-            CALL stress_neto(itrmax, idepg,
      &                   prope,   sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
@@ -410,9 +200,7 @@ c ***** Compute the Elemental Value (Sum-up for Element ) **************
             e_ene = e_ene +e_dns*detwxyz
             p_ene = p_ene +p_dns*detwxyz
 c
-c ***** 内力ベクトルの計算 *********************************************
-c       f_int = ∫ B^T σ dV
-c       各節点の各自由度に対して応力の寄与を積分
+c ***** Compute the Internal Force Vector ******************************
             do no=1,node
               do ii=1,ndf
                 ndof = ndf*(no -1) +ii

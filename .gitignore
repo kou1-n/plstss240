@@ -29,6 +29,7 @@ uniconp_output.log
 
 # Output directory files
 output/*.txt
+output/**/*.csv
 output/*.csv
 output/*.log
 output/RES_*.cml
@@ -136,4 +137,23 @@ check_*.f
 # NEU2CML temporary files
 *.NEU
 NEU2CML*
-!NEU2CML.mddata/*.modfem
+!NEU2CML.md
+
+# Large binary files
+data/*.modfem
+
+# Test output logs
+output_*.txt
+
+# PostScript files
+src/PS-FILES/
+
+# Source archive
+src_archive/
+
+# Temporary diff files
+src/diff
+
+# Old Makefiles in src
+src/Makefile
+src/makewin

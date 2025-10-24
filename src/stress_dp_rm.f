@@ -106,29 +106,29 @@ c     DP FIX: 降伏関数の体積項をp_tryに置換
       ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*p_try
      &      - xi_dp*(yld +hard)
 c
-           write(*,'(A,E12.5)') '  ftreg     = ', ftreg
+c          write(*,'(A,E12.5)') '  ftreg     = ', ftreg
 c  ===== PLASTIC CASE
 c          determine the Lagrange multiplier by N.R. iteration =====
       if(ftreg.gt.0.d0) then
 c
 c       === DEBUG: Material parameters and initial state ===
-        write(*,'(A)') '  --- Entering Plastic Correction ---'
-        write(*,'(A,E14.6,A)') '    phi_dp   = ', phi_dp*180.d0/
-     &    3.14159265358979d0, ' deg'
-        write(*,'(A,E14.6,A)') '    psi_dp   = ', psi_dp*180.d0/
-     &    3.14159265358979d0, ' deg'
-        write(*,'(A,E14.6)') '    eta_dp   = ', eta_dp
-        write(*,'(A,E14.6)') '    etabar_dp= ', etabar_dp
-        write(*,'(A,E14.6)') '    xi_dp    = ', xi_dp
-        write(*,'(A,E14.6)') '    G (vmu)  = ', vmu
-        write(*,'(A,E14.6)') '    K (vkp)  = ', vkp
-        write(*,'(A,E14.6)') '    K/G      = ', vkp/vmu
-        write(*,'(A,E14.6)') '    p_try    = ', p_try
-        write(*,'(A,E14.6)') '    ||s_try||= ', stno
-        write(*,'(A,E14.6)') '    alpeg    = ', alpeg
-        write(*,'(A,E14.6)') '    hk       = ', hk
-        write(*,'(A,E14.6)') '    hpa      = ', hpa
-        write(*,'(A,E14.6)') '    hpb      = ', hpb
+c        write(*,'(A)') '  --- Entering Plastic Correction ---'
+c        write(*,'(A,E14.6,A)') '    phi_dp   = ', phi_dp*180.d0/
+c     &    3.14159265358979d0, ' deg'
+c        write(*,'(A,E14.6,A)') '    psi_dp   = ', psi_dp*180.d0/
+c     &    3.14159265358979d0, ' deg'
+c        write(*,'(A,E14.6)') '    eta_dp   = ', eta_dp
+c        write(*,'(A,E14.6)') '    etabar_dp= ', etabar_dp
+c        write(*,'(A,E14.6)') '    xi_dp    = ', xi_dp
+c        write(*,'(A,E14.6)') '    G (vmu)  = ', vmu
+c        write(*,'(A,E14.6)') '    K (vkp)  = ', vkp
+c        write(*,'(A,E14.6)') '    K/G      = ', vkp/vmu
+c        write(*,'(A,E14.6)') '    p_try    = ', p_try
+c        write(*,'(A,E14.6)') '    ||s_try||= ', stno
+c        write(*,'(A,E14.6)') '    alpeg    = ', alpeg
+c        write(*,'(A,E14.6)') '    hk       = ', hk
+c        write(*,'(A,E14.6)') '    hpa      = ', hpa
+c        write(*,'(A,E14.6)') '    hpb      = ', hpb
 c       === END DEBUG ===
 c
 c             write(*,*) 1
@@ -193,18 +193,18 @@ c           write(*,'(A)')
 c    &        '--------------------------------------------------------'
 c         endif
 c
-          write(*,'(A,I3,A)') '  Iter[', it, ']:'
-          write(*,'(A,E12.5,A,E12.5)')
-     &      '    gg=', gg, '  Dg=', Dg
-          write(*,'(A,E12.5,A,E12.5)')
-     &      '    gg/Dg=', gg/Dg, '  |gg/Dg|=', dabs(gg/Dg)
-          write(*,'(A,E12.5,A,E12.5)')
-     &      '    deltag=', deltag, '  alptmp=', alptmp
-          write(*,'(A,E12.5,A,E12.5)')
-     &      '    hrdtmp=', hrdtmp, '  dhdtmp=', dhdtmp
-          write(*,'(A,E12.5,A,E12.5)')
-     &      '    H_correct=', xi_dp*dhdtmp/sqrt3,
-     &      '  H_old(wrong)=', xi_dp*xi_dp*dhdtmp
+c          write(*,'(A,I3,A)') '  Iter[', it, ']:'
+c          write(*,'(A,E12.5,A,E12.5)')
+c     &      '    gg=', gg, '  Dg=', Dg
+c          write(*,'(A,E12.5,A,E12.5)')
+c     &      '    gg/Dg=', gg/Dg, '  |gg/Dg|=', dabs(gg/Dg)
+c          write(*,'(A,E12.5,A,E12.5)')
+c     &      '    deltag=', deltag, '  alptmp=', alptmp
+c          write(*,'(A,E12.5,A,E12.5)')
+c     &      '    hrdtmp=', hrdtmp, '  dhdtmp=', dhdtmp
+c          write(*,'(A,E12.5,A,E12.5)')
+c     &      '    H_correct=', xi_dp*dhdtmp/sqrt3,
+c     &      '  H_old(wrong)=', xi_dp*xi_dp*dhdtmp
 c
           if( dabs(gg/Dg).lt.ctol) then
 c           write(*,'(A,I3,A)') 
@@ -250,19 +250,19 @@ c
   210   CONTINUE
 c
 c       === DEBUG: Return mapping converged ===
-        write(*,'(A)') '  --- Return Mapping Converged ---'
-        write(*,'(A,E14.6)') '    Final deltag = ', deltag
-        write(*,'(A,E14.6)') '    sqrt(2)*G*deltag = ',
-     &    dsqrt(2.d0)*vmu*deltag
-        write(*,'(A,E14.6)') '    ||s_try||    = ', stno
-        write(*,'(A,E14.6)') '    Ratio sqrt(2)*G*deltag/||s_try|| = ',
-     &    (dsqrt(2.d0)*vmu*deltag)/stno
+c        write(*,'(A)') '  --- Return Mapping Converged ---'
+c        write(*,'(A,E14.6)') '    Final deltag = ', deltag
+c        write(*,'(A,E14.6)') '    sqrt(2)*G*deltag = ',
+c     &    dsqrt(2.d0)*vmu*deltag
+c        write(*,'(A,E14.6)') '    ||s_try||    = ', stno
+c        write(*,'(A,E14.6)') '    Ratio sqrt(2)*G*deltag/||s_try|| = ',
+c     &    (dsqrt(2.d0)*vmu*deltag)/stno
 c       === END DEBUG ===
 c
 c     --- update equivalent plastic strain "alpha"
 c       CORRECTED: Δα = Δγ/√3, NOT ξ*Δγ
         alptmp = alpeg
-        alpeg = alpeg +xi_dp*deltag/sqrt3
+        alpeg = alpeg +deltag/sqrt3
 c
 c       DP塑性でのΔγ（塑性乗数）確認
 c        write(*,'(A,E12.5)') '  DP deltag (Δγ)       = ', deltag
@@ -307,33 +307,33 @@ c       CORRECTED: H = ξ*(∂K/∂α)/√3, NOT ξ²*(∂K/∂α)
      &          + xi_dp*dhard/sqrt3)
 
 c       === DEBUG: Check consistency tangent coefficients ===
-        write(*,'(A)') '  --- Consistent Tangent Diagnostics ---'
-        write(*,'(A,E14.6)') '    dhard            = ', dhard
-        write(*,'(A,E14.6)') '    A (corrected)    = ', A
-        write(*,'(A,E14.6)') '    Denominator (corrected) = ',
-     &        vmu + vkp*etabar_dp*eta_dp + xi_dp*dhard/sqrt3
-        write(*,'(A,E14.6)') '    H_correct = ξ*(∂K/∂α)/√3 = ',
-     &        xi_dp*dhard/sqrt3
-        write(*,'(A,E14.6)') '    H_old(wrong) = ξ²*(∂K/∂α) = ',
-     &        xi_dp*xi_dp*dhard
-        write(*,'(A,E14.6)') '    K*eta*etabar     = ',
-     &        vkp*eta_dp*etabar_dp
-        write(*,'(A,E14.6)') '    K*eta*etabar*A   = ',
-     &        vkp*eta_dp*etabar_dp*A
+c        write(*,'(A)') '  --- Consistent Tangent Diagnostics ---'
+c        write(*,'(A,E14.6)') '    dhard            = ', dhard
+c        write(*,'(A,E14.6)') '    A (corrected)    = ', A
+c        write(*,'(A,E14.6)') '    Denominator (corrected) = ',
+c          &        vmu + vkp*etabar_dp*eta_dp + xi_dp*dhard/sqrt3
+c        write(*,'(A,E14.6)') '    H_correct = ξ*(∂K/∂α)/√3 = ',
+c          &        xi_dp*dhard/sqrt3
+c        write(*,'(A,E14.6)') '    H_old(wrong) = ξ²*(∂K/∂α) = ',
+c          &        xi_dp*xi_dp*dhard
+c        write(*,'(A,E14.6)') '    K*eta*etabar     = ',
+c          &        vkp*eta_dp*etabar_dp
+c        write(*,'(A,E14.6)') '    K*eta*etabar*A   = ',
+c          &        vkp*eta_dp*etabar_dp*A
 
         theta = 1.d0 -(dsqrt(2.d0)*vmu*deltag)/stno !ok
         thetab= (dsqrt(2.d0)*vmu*deltag)/stno - vmu*A !ok
 
-        write(*,'(A,E14.6)') '    theta            = ', theta
-        write(*,'(A,E14.6)') '    thetab           = ', thetab
-        write(*,'(A,E14.6)') '    bulk_coef (1-K*eta*etabar*A) = ',
-     &        1.d0-vkp*eta_dp*etabar_dp*A
+c        write(*,'(A,E14.6)') '    theta            = ', theta
+c        write(*,'(A,E14.6)') '    thetab           = ', thetab
+c        write(*,'(A,E14.6)') '    bulk_coef (1-K*eta*etabar*A) = ',
+c          &        1.d0-vkp*eta_dp*etabar_dp*A
 c
         if(theta .lt. 0.d0) then
-          write(*,'(A)') '    *** WARNING: theta < 0 ***'
+c          write(*,'(A)') '    *** WARNING: theta < 0 ***'
         endif
         if((1.d0-vkp*eta_dp*etabar_dp*A) .lt. 0.01d0) then
-          write(*,'(A)') '    *** WARNING: bulk stiffness too small ***'
+c          write(*,'(A)') '    *** WARNING: bulk stiffness too small ***'
         endif
 c       === END DEBUG ===
 c

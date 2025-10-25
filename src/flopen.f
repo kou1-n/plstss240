@@ -42,30 +42,30 @@ c     === Input file in CML-format ===
       OPEN(lra,file=flname,status='old',err=1000)
 c
 c     === Output File in CML-format ===
-      flname = 'RES_'//infem(1:ni)//'.cml'
+      flname = 'output/RES_'//infem(1:ni)//'.cml'
       OPEN(lwa,file=flname,status='unknown')
       WRITE(lwa,'(a7)') '/TITLE/'
       WRITE(lwa,*) 'PLSTss ver. 2.2'
       WRITE(lwa,'(a7)') '/LASTD/'
 c
 c     === Output File for Stress-Strain Curve ===
-      flname = 'STS_'//infem(1:ni)//'.txt'
+      flname = 'output/STS_'//infem(1:ni)//'.txt'
       OPEN(lwb,file=flname,status='unknown')
 c
 c     === Output File for Nodal Displacements & Forces ===
-      flname = 'DIS_'//infem(1:ni)//'.txt'
+      flname = 'output/DIS_'//infem(1:ni)//'.txt'
       OPEN(lwc,file=flname,status='unknown')
 c
 c     === Output File for Some Norms ===
-      flname = 'NOR_'//infem(1:ni)//'.txt'
+      flname = 'output/NOR_'//infem(1:ni)//'.txt'
       OPEN(lwd,file=flname,status='unknown')
 c
 c     === Output File for Plastic & Elastic Energy ===
-      flname = 'ENE_'//infem(1:ni)//'.txt'
+      flname = 'output/ENE_'//infem(1:ni)//'.txt'
       OPEN(lwe,file=flname,status='unknown')
 c
 c     === Output File for Temperature ===
-      flname = 'TMP_'//infem(1:ni)//'.txt'
+      flname = 'output/TMP_'//infem(1:ni)//'.txt'
       OPEN(lwf,file=flname,status='unknown')
 c
 c     === Input File for Renumbered DOF ===

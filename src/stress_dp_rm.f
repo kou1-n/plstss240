@@ -90,7 +90,7 @@ c   DP FIX: 試行偏差応力（塑性ひずみの体積成分除外）
       stno = 0.d0
       do jj=1,3
         do ii=1,3
-          stno = stno +stry(ii,jj)**2 !試行のstryで作成したノルム
+          stno = stno + stry(ii,jj)**2 !試行のstryで作成したノルム
         enddo
       enddo
       stno = dsqrt(stno)
@@ -327,10 +327,10 @@ c        write(*,'(A,E14.6)') '    bulk_coef (1-K*eta*etabar*A) = ',
 c          &        1.d0-vkp*eta_dp*etabar_dp*A
 c
         if(theta .lt. 0.d0) then
-c          write(*,'(A)') '    *** WARNING: theta < 0 ***'
+          write(*,'(A)') '    *** WARNING: theta < 0 ***'
         endif
         if((1.d0-vkp*eta_dp*etabar_dp*A) .lt. 0.01d0) then
-c          write(*,'(A)') '    *** WARNING: bulk stiffness too small ***'
+          write(*,'(A)') '    *** WARNING: bulk stiffness too small ***'
         endif
 c       === END DEBUG ===
 c

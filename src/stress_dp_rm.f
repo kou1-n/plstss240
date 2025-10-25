@@ -57,12 +57,9 @@ c    --- plastic parameters
       hpd = prope(15)
       phi_dp = prope(16)
       psi_dp = prope(17)
-      eta_dp   = 6.d0 * sin(phi_dp) / ( dsqrt(3.d0) * 
-     &                                 (3.d0 - sin(phi_dp)) )
-      xi_dp    = 6.d0 * cos(phi_dp) / ( dsqrt(3.d0) *
-     &                                 (3.d0 - sin(phi_dp)) )
-      etabar_dp = 6.d0 * sin(psi_dp) / ( dsqrt(3.d0) *
-     &                                  (3.d0 - sin(psi_dp)) )
+      eta_dp = 6.d0*sin(phi_dp)/(dsqrt(3.d0)*(3.d0-sin(phi_dp)))
+      xi_dp = 6.d0*cos(phi_dp)/(dsqrt(3.d0)*(3.d0-sin(phi_dp)))
+      etabar_dp = 6.d0*sin(psi_dp)/(dsqrt(3.d0)*(3.d0-sin(psi_dp)))
 c
 c    --- thermal parameters
       row = prope(3)
@@ -259,7 +256,7 @@ c        write(*,'(A,E14.6)') '    Ratio sqrt(2)*G*deltag/||s_try|| = ',
 c     &    (dsqrt(2.d0)*vmu*deltag)/stno
 c       === END DEBUG ===
 c
-c     --- update equivalent plastic strain "alpha"
+c     --- update Effective Plastic Strain "alpha"
 c       CORRECTED: Δα = Δγ/√3, NOT ξ*Δγ
         alptmp = alpeg
         alpeg = alpeg +deltag/sqrt3

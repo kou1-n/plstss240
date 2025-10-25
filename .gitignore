@@ -35,6 +35,7 @@ output/*.log
 output/RES_*.cml
 debug_outputs/
 !debug_outputs/.gitkeep
+!output/.gitkeep
 
 # Temporary input/output files
 out

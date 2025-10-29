@@ -57,9 +57,9 @@ c    --- plastic parameters
       hpd = prope(15)
       phi_dp = prope(16)
       psi_dp = prope(17)
-      eta_dp = 6.d0*sin(phi_dp)/(dsqrt(3.d0)*(3.d0-sin(phi_dp)))
-      xi_dp = 6.d0*cos(phi_dp)/(dsqrt(3.d0)*(3.d0-sin(phi_dp)))
-      etabar_dp = 6.d0*sin(psi_dp)/(dsqrt(3.d0)*(3.d0-sin(psi_dp)))
+      eta_dp = 2.d0*sin(phi_dp)/(3.d0-sin(phi_dp))
+      xi_dp = 6.d0*cos(phi_dp)/(3.d0-sin(phi_dp))
+      etabar_dp = 2.d0*sin(psi_dp)/(3.d0-sin(psi_dp))
 c
 c    --- thermal parameters
       row = prope(3)
@@ -99,8 +99,8 @@ c  === Compute Hardening Function & Yield Function ===
       hard = hpd*(hk*alpeg
      &     +(hpa -yld) *(1.d0 -dexp(-hpb*alpeg)))
 c
-c     DP FIX: 降伏関数の体積項をp_tryに置換
-      ftreg = dsqrt(1.d0/2.d0)*stno + eta_dp*p_try
+c     DP FIX: 降伏関数の体積項をp_tryに置換（q形式）
+      ftreg = dsqrt(3.d0/2.d0)*stno + eta_dp*p_try
      &      - xi_dp*(yld +hard)
 c
 c          write(*,'(A,E12.5)') '  ftreg     = ', ftreg
@@ -147,15 +147,15 @@ c         --- K'(\alpha^{(n)}_{n+1})
      &            +hpb*(hpa -yld)*dexp(-hpb*alptmp))
 c
 c         ---gg(8.117 p363)
-c         DP FIX: Newton残差の体積項をp_tryに置換
-          gg = dsqrt(1.d0/2.d0)*stno
-     &       - vmu*deltag
+c         DP FIX: Newton残差の体積項をp_tryに置換（q形式）
+          gg = dsqrt(3.d0/2.d0)*stno
+     &       - 3.d0*vmu*deltag
      &       + eta_dp*(p_try - vkp*etabar_dp*deltag)
      &       - xi_dp*(yld +hrdtmp)
-c         ---ggのdeltagによる偏微分
+c         ---ggのdeltagによる偏微分（q形式）
 c         CORRECTED: H = ξ*(∂K/∂α)/√3, NOT ξ²*(∂K/∂α)
           sqrt3 = dsqrt(3.d0)
-          Dg = -vmu
+          Dg = -3.d0*vmu
      &         -eta_dp*vkp*etabar_dp
      &         -xi_dp*dhdtmp/sqrt3
 c
@@ -277,10 +277,10 @@ c        write(*,'(A,E12.5)') '  DP tr(oun)           = ', tr_oun
 c
 c     --- compute the plastic strain et.al.
 c       etrs already computed at the beginning
-c    8.109に基づく偏差ひずみのアップデート        
+c    8.109に基づく偏差ひずみのアップデート（q形式）
         plstrg(:,:) = plstrg(:,:)
      &              + deltag*(
-     &              + oun(:,:)*dsqrt(1.d0/2.d0)
+     &              + oun(:,:)*dsqrt(3.d0/2.d0)
      &              + etabar_dp*DELTA(:,:)/3.d0
      &              ) !ok
 c       DP塑性でのtr(plstrg)確認（更新後、体積変化あり）
@@ -291,16 +291,16 @@ c        tr_delta = deltag * etabar_dp
 c        write(*,'(A,E12.5)') '  DP Δε_v (=Δγ*etabar) = ', tr_delta
 
 
-c       DP FIX: 応力更新（塑性時）の体積項をp_tryに置換
-        sig(:,:) = stry(:,:) -dsqrt(2.d0)*vmu*deltag*oun(:,:)
+c       DP FIX: 応力更新（塑性時）の体積項をp_tryに置換（q形式）
+        sig(:,:) = stry(:,:) -dsqrt(6.d0)*vmu*deltag*oun(:,:)
      &            +(p_try - vkp*etabar_dp*deltag)*DELTA(:,:)
 c       p_n+1 = p_try - K*etabar*Δγ (体積応力更新)
 
 
 c     --- update consititutive tensor: "ctens"
         dhard = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg))
-c       CORRECTED: H = ξ*(∂K/∂α)/√3, NOT ξ²*(∂K/∂α)
-        A = 1.d0/(vmu + vkp*etabar_dp*eta_dp
+c       CORRECTED: H = ξ*(∂K/∂α)/√3, NOT ξ²*(∂K/∂α)（q形式）
+        A = 1.d0/(3.d0*vmu + vkp*etabar_dp*eta_dp
      &          + xi_dp*dhard/sqrt3)
 
 c       === DEBUG: Check consistency tangent coefficients ===
@@ -318,8 +318,8 @@ c          &        vkp*eta_dp*etabar_dp
 c        write(*,'(A,E14.6)') '    K*eta*etabar*A   = ',
 c          &        vkp*eta_dp*etabar_dp*A
 
-        theta = 1.d0 -(dsqrt(2.d0)*vmu*deltag)/stno !ok
-        thetab= (dsqrt(2.d0)*vmu*deltag)/stno - vmu*A !ok
+        theta = 1.d0 -(dsqrt(6.d0)*vmu*deltag)/stno !ok (q形式)
+        thetab= (dsqrt(6.d0)*vmu*deltag)/stno - 3.d0*vmu*A !ok (q形式)
 
 c        write(*,'(A,E14.6)') '    theta            = ', theta
 c        write(*,'(A,E14.6)') '    thetab           = ', thetab
@@ -344,10 +344,10 @@ c
      &
      &              +2.d0*vmu*thetab*oun(ii,jj)*oun(kk,ll)
      &
-     &              - dsqrt(2.d0)*vmu*A*vkp
+     &              - dsqrt(6.d0)*vmu*A*vkp
      &              *(eta_dp*oun(ii,jj)*DELTA(kk,ll)
-     &              + etabar_dp*DELTA(ii,jj)*oun(kk,ll)) 
-     & 
+     &              + etabar_dp*DELTA(ii,jj)*oun(kk,ll))
+     &
      &              + vkp*(1.d0-vkp*eta_dp*etabar_dp*A)
      &                         *DELTA(ii,jj)*DELTA(kk,ll)
      

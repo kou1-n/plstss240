@@ -1,0 +1,153 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{siunitx}
+\usepackage{hyperref}
+\geometry{margin=25mm}
+\newcommand{\tensor}[1]{\boldsymbol{#1}}
+\newcommand{\bsigma}{\tensor{\sigma}}
+\newcommand{\beps}{\tensor{\varepsilon}}
+\newcommand{\bC}{\tensor{\mathsf{C}}}
+\newcommand{\bB}{\tensor{\mathsf{B}}}
+\newcommand{\bL}{\tensor{\mathsf{L}}}
+\newcommand{\bM}{\tensor{\mathsf{M}}}
+\newcommand{\bN}{\tensor{\mathsf{N}}}
+\newcommand{\bn}{\tensor{n}}
+\title{Block Newton Usage Guide for the Drucker--Prager Model in \texttt{plstss240}}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+\section{Overview}
+The Drucker--Prager plasticity update based on the block Newton method is implemented in four cooperating Fortran routines:
+\begin{itemize}
+  \item the global Newton loop in \texttt{analys.f}, which repeatedly assembles residuals and tangents before checking convergence \cite{analysNR};
+  \item the element post-processing driver \texttt{postpr.f}, which dispatches to element routines while forwarding the global iteration counter and the history workspace \cite{postprDispatch};
+  \item the eight-node hexahedral element routine \texttt{phexa8.f}, responsible for evaluating strains, managing the history vectors, and calling the constitutive update according to the material type flag \cite{phexa8Call};
+  \item the integration-point algorithm \texttt{stress\_dp\_bn.f}, which realises BOX~1 (local update) and the storage expected by BOX~2 (global update) of Yamamoto et~al.~(2021) \cite{stressBNBox1,stressBNHistory}.
+\end{itemize}
+This document summarises how these routines exchange data and provides algorithm listings that follow standard notation.
+\section{File responsibilities and data flow}
+\subsection{Global Newton loop (\texttt{analys.f})}
+For each load step, \texttt{analys.f} solves the linearised equilibrium equations, updates the displacement increment, and invokes \texttt{postpr} to obtain the internal force vector \cite{analysNR}. The call passes the current Newton iteration number \(\mathrm{itr}\) and the integration-point work array \(\texttt{histi0}(50, n_{\mathrm{gp}}, n_{\mathrm{el}})\), which stores block Newton residual information between iterations.
+\subsection{Element post-processing driver (\texttt{postpr.f})}
+Within \texttt{postpr}, the mesh is traversed element-by-element. For each eight-node hexahedron the routine gathers coordinates and displacements and calls \texttt{phexa8} with the same iteration counter and the history array slices \cite{postprDispatch}. This keeps the history data synchronised with the global loop.
+\subsection{Element routine (\texttt{phexa8.f})}
+Inside \texttt{phexa8} the strain tensor is computed at every Gauss point, the history arrays \(\texttt{ehist}\) and \(\texttt{histi}\) are loaded, and the constitutive model is selected by the material flag \texttt{MATYPE} \cite{phexa8Call}. The branch that currently calls \texttt{stress\_dp\_rm} (return mapping) for \texttt{MATYPE=4} can be switched to \texttt{stress\_dp\_bn} to activate the block Newton update. After the constitutive call, updated history values and consistent tangents are written back to \texttt{histi0} for use in the next global iteration.
+\subsection{Integration-point algorithm (\texttt{stress\_dp\_bn.f})}
+The routine \texttt{stress\_dp\_bn} loads the stored plastic strain tensor and equivalent plastic strain, distinguishes the first global iteration from subsequent ones, and evaluates the Drucker--Prager trial state \cite{stressBNBox1}. For plastic loading the subroutine executes the BOX~1 update: it reconstructs the incrementally consistent plastic strain, updates the hardening variables, forms the matrices \(\bL\), \(\bM\), and the scalar \(N\), and computes the corrected stress and consistent tangent \cite{stressBNUpdate}. Key scalar residuals (yield function \(g\), consistency increment \(\delta\gamma\)) and sensitivities (\(\partial g/\partial \beps\)) are stored back into \texttt{histi} so that the global loop can assemble BOX~2 \cite{stressBNHistory}. In elastic steps the routine returns the elastic stress and tangent while zeroing the residual data \cite{stressBNElastic}.
+\section{Algorithm listings}
+\subsection{Global block Newton iteration}
+\begin{algorithm}[H]
+  \caption{Global block Newton loop (\texttt{analys.f})}
+  \label{alg:global}
+  \begin{algorithmic}[1]
+    \State Initialise displacement vectors, history arrays, and load factors.
+    \For{each load step}
+      \Repeat
+        \State Assemble and solve the linearised equilibrium equations.
+        \State Update the displacement field \(\mathbf{u}^{k+1} = \mathbf{u}^{k} + \delta \mathbf{u}\).
+        \State Call \texttt{postpr} to evaluate internal forces and collect block Newton data (Alg.~\ref{alg:element}).
+        \State Form the residual \(\mathbf{R}_f = \mathbf{F}_{\mathrm{ext}} - \mathbf{F}_{\mathrm{int}}\) and compute its norm.
+      \Until the residual and load-normalised norms satisfy the tolerance.
+      \State Store converged histories and advance to the next load factor.
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
+\subsection{Element assembly and residual accumulation}
+\begin{algorithm}[H]
+  \caption{Element loop for hexahedra (\texttt{postpr.f}/\texttt{phexa8.f})}
+  \label{alg:element}
+  \begin{algorithmic}[1]
+    \For{each element \(e\)}
+      \State Gather nodal coordinates and displacements.
+      \For{each Gauss point \(g\)}
+        \State Compute strains \(\beps_{g}\) and load history slices.
+        \State Invoke \texttt{stress\_dp\_bn} to obtain \(\bsigma_g\), \(\bC^{\mathrm{ep}}_g\), and updated history data (Alg.~\ref{alg:local}).
+        \State Accumulate internal forces \(\mathbf{f}_{\mathrm{int}} += \int_{\Omega_e} \bB^T \bsigma_g\,\mathrm{d}\Omega\).
+        \State Store the returned history back into \texttt{histi0} and \texttt{dhist1}.
+      \EndFor
+      \State Assemble element contributions into the global residual and tangent matrices.
+    \EndFor
+  \end{algorithmic}
+\end{algorithm}
+\subsection{Integration-point update and storage}
+\begin{algorithm}[H]
+  \caption{BOX~1 at a Gauss point (\texttt{stress\_dp\_bn.f})}
+  \label{alg:local}
+  \begin{algorithmic}[1]
+    \State Load \(\alpha_n\), \(\beps_n^{\mathrm{p}}\), and previously stored block Newton data from \texttt{histi}.
+    \If{first global iteration}
+      \State Set \(\delta\gamma=0\) and evaluate the trial yield function \(g^{\mathrm{tr}}\).
+      \State Initialise \(\bL\), \(\bM\), \(N\), and store the residual \(g=g^{\mathrm{tr}}\).
+    \Else
+      \State Recover the increment \(\delta\gamma\) supplied through \texttt{histi(1)} and rebuild the updated plastic strain.
+      \State Update the hardening function \(H(\alpha)\) and the yield function \(g\).
+      \State Recompute \(\bL\), \(\bM\), and \(N\) for the new state.
+    \EndIf
+    \State Form the corrected stress \(\bsigma = \bsigma^{\mathrm{tr}} - \sqrt{2}\mu\,\delta\gamma\,\bn + p\,\tensor{I}\) and add the consistency correction \(-gN^{-1}\bL\).
+    \State Assemble the consistent tangent \(\bC^{\mathrm{ep}} = \bC - N^{-1} \bL \otimes \bM\).
+    \State Store \(g\), \(N\), the strain sensitivities \(\partial g/\partial \beps\), and \(\bM\) into \texttt{histi} for BOX~2.
+  \end{algorithmic}
+\end{algorithm}
+\section{History vector layout}
+Table~\ref{tab:histi} summarises the entries that \texttt{stress\_dp\_bn} exchanges with the global loop. The values are written into the work array at the end of each call and read back during the next Newton iteration.
+\begin{table}[H]
+  \centering
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    Slot & Symbol & Description \\
+    \midrule
+    1 & \(\delta\gamma\) & Consistency increment provided by BOX~2 (not overwritten locally). \\
+    3 & \(\alpha\) & Updated equivalent plastic strain. \\
+    4 & \(g\) & Yield residual after the BOX~1 update. \\
+    5 & \(N\) & Scalar consistent modulus required in BOX~2. \\
+    6 & \(g\) & Stored again for convenience when forming the residual vector. \\
+    7--15 & \(\beps\) & Current total strain tensor components. \\
+    16--24 & \(\partial g/\partial \beps\) & Sensitivity used when building the global coupling. \\
+    25--33 & \(\bM\) & Flow-direction matrix used in the \(\bM^T\) block of BOX~2. \\
+    34 & \(\Delta\gamma\) & Cumulative consistency parameter for monitoring. \\
+    \bottomrule
+  \end{tabular}
+  \caption{Selected \texttt{histi} entries after calling \texttt{stress\_dp\_bn}.}
+  \label{tab:histi}
+\end{table}
+\section{Residual coupling in BOX~2}
+The global block Newton system couples the structural equilibrium residual \(\mathbf{R}_f\) and the yield residual \(R_g\):
+\begin{equation}
+\begin{bmatrix}
+\mathbf{K}_T & \mathbf{L}\\
+\mathbf{M}^T & N
+\end{bmatrix}
+\begin{bmatrix}
+\delta \mathbf{u}\\
+\delta\gamma
+\end{bmatrix}
+= -\begin{bmatrix}
+\mathbf{R}_f\\
+R_g
+\end{bmatrix}.
+\label{eq:block_system}
+\end{equation}
+The element contributions required in \eqref{eq:block_system} are available from \texttt{stress\_dp\_bn}: the consistent tangent \(\bC^{\mathrm{ep}}\) contributes to \(\mathbf{K}_T\), the matrix \(\bL\) (stored implicitly through \(\partial g/\partial \beps\)) contributes to \(\mathbf{L}\), \(\bM\) yields \(\mathbf{M}\), and the scalar \(N\) is accumulated into the lower-right block \cite{stressBNUpdate,stressBNHistory}. The element routine must contract these quantities with the strain--displacement matrix \(\bB\) when assembling the global system. During the following Newton iteration the solved increment \(\delta\gamma\) is fed back through \texttt{histi(1)} so that the integration-point update can proceed without local iterations \cite{stressBNHistory}.
+\section{Practical usage}
+To use the block Newton constitutive update in \texttt{plstss240}:
+\begin{enumerate}
+  \item Choose a material flag value (for example, reassign \texttt{MATYPE=4}) in the input data so that \texttt{phexa8} dispatches to \texttt{stress\_dp\_bn} instead of \texttt{stress\_dp\_rm} \cite{phexa8Call}.
+  \item Ensure that the element assembly forms the mixed block matrix \eqref{eq:block_system} by integrating the additional \(\mathbf{L}\), \(\mathbf{M}\), and \(N\) contributions recorded in \texttt{histi}. The stored sensitivities map directly onto the required surface terms of Yamamoto et~al.'s BOX~2 formulation \cite{stressBNHistory}.
+  \item During the global solve, populate \texttt{histi(1)} with the solved \(\delta\gamma\) increment before re-entering \texttt{stress\_dp\_bn} so that the integration-point update uses the globally consistent value \cite{stressBNHistory}.
+\end{enumerate}
+\bibliographystyle{plain}
+\begin{thebibliography}{9}
+\bibitem{analysNR} `src/analys.f`, lines~330--420.
+\bibitem{postprDispatch} `src/postpr.f`, lines~166--205.
+\bibitem{phexa8Call} `src/phexa8.f`, lines~160--214.
+\bibitem{stressBNBox1} `src/stress\_dp\_bn.f`, lines~62--215.
+\bibitem{stressBNUpdate} `src/stress\_dp\_bn.f`, lines~221--500.
+\bibitem{stressBNHistory} `src/stress\_dp\_bn.f`, lines~506--548.
+\bibitem{stressBNElastic} `src/stress\_dp\_bn.f`, lines~562--610.
+\end{thebibliography}
+\end{document}

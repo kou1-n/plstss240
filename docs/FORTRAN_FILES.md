@@ -30,7 +30,7 @@ list is not exhaustive, but it covers the most frequently used routines.
 | `output.f` | Writes displacement vectors and stress data to text files. Variables `disp`, `sigout` are used for output formatting. |
 | `phexa8.f`, `pquad4.f`, `pquad8.f`, `ptria3.f`, `ptria6.f`, `ptrip1.f` | Elasto–plastic computations at integration points for each element. Maintain history variables `ehist` (plastic strain) and `beta` (back stress). |
 | `stress.f` | Main constitutive routine for the Drucker–Prager model. Takes strain tensor `str(3,3)` and returns stress `sig(3,3)` along with the consistent tangent `ctens(3,3,3,3)` and energy densities. Key internal variables include the plastic multiplier `deltag` and equivalent plastic strain `alpeg`. |
-| `stress_dp.f` | Alternative Drucker–Prager update using a two-variable return mapping scheme. Called from element routines when `MATYPE=4`. Shares the same arguments as `stress.f`. |
+| `stress_dp.f` | Alternative Drucker–Prager update using a two-variable return mapping scheme. Called from element routines when `MATYPE=3`. Shares the same arguments as `stress.f`. |
 | `stress_dp_iso.f` | Variant of `stress_dp.f` without kinematic hardening. Uses a one-dimensional Newton solver on `\Delta\gamma`. |
 | `update.f` | Updates the global displacement vector after solving the system. Also accumulates incremental plastic strain. |
 | `zerodt.f` | Utility to reset large arrays to zero at the beginning of each time step. |

@@ -174,7 +174,7 @@ c            print'("--------------------------------ig=",2I5)',ig,MATYPE
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
      &                  ierror, itr, histi )
-          elseif(MATYPE.eq.4) then
+          elseif(MATYPE.eq.3) then
             CALL stress_dp_rm(itrmax, idepg,
      &                   prope,   sig,   str, ehist,
      &                    ctol,  vons, e_dns, p_dns,

@@ -158,3 +158,4 @@ src/diff
 # Old Makefiles in src
 src/Makefile
 src/makewin
+data/1elem_f_uniconp.modfem

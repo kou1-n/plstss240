@@ -1,14 +1,24 @@
       subroutine flopen(ierror,  iRCM)
 c
       implicit double precision(a-h,o-z)
+      intrinsic date_and_time
 c
       character*30 infem,flname
       character*1 fl
+      character*10 date_str,time_str
+      character*5 zone
+      integer date_vals(8)
 c
       common /iodev/ lra,lrb,lwa,lwb,lwc,lwd,lwe,lwf
 c
+      call date_and_time(date_str,time_str,zone,date_vals)
+      WRITE(*,90) date_vals(1),date_vals(2),date_vals(3),
+     &             date_vals(5),date_vals(6),date_vals(7)
       WRITE(*,100)
 c
+   90 FORMAT(/,5x,'[Analysis Timestamp] ',
+     &        I4.4,'/',I2.2,'/',I2.2,' ',
+     &        I2.2,':',I2.2,':',I2.2,/)
   100 FORMAT(/,
      &   5x,'************************************************',
      & /,5x,'**                                            **',

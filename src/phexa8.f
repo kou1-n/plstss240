@@ -27,6 +27,10 @@ c
       dimension finte(24)
       dimension ehist(20)
       dimension histi(50)
+      dimension M_mat(3,3), stri(3,3), dstr(3,3)
+      real*8 N_scalar, g_val, delta_gamma_inc, tmp
+      integer kk
+
 c
       common /tvalu/ ctol,stol
 c **********************************************************************
@@ -159,6 +163,52 @@ c
 c         === Set Deformation Histtories ===
             ehist(:) = dhist0(:,ig,nel)
             histi(:) = histi0(:,ig,nel)
+
+c
+c         === Block Newton: compute δγ from saved (g, N, M, ε^k) ===
+          if( (MATYPE.eq.4) .and. (itr.gt.1) ) then
+            N_scalar = histi(5)
+            g_val    = histi(6)
+            kk = 6
+            do jj=1,3
+              do ii=1,3
+                kk = kk+1
+                stri(ii,jj) = histi(kk)
+              enddo
+            enddo
+            do jj=1,3
+              do ii=1,3
+                kk = kk+1    ! skip xa (9)
+              enddo
+            enddo
+            do jj=1,3
+              do ii=1,3
+                kk = kk+1
+                M_mat(ii,jj) = histi(kk)
+              enddo
+            enddo
+            do jj=1,3
+              do ii=1,3
+                dstr(ii,jj) = str(ii,jj) - stri(ii,jj)
+              enddo
+            enddo
+            tmp = 0.d0
+            do jj=1,3
+              do ii=1,3
+                tmp = tmp + M_mat(ii,jj)*dstr(ii,jj)
+              enddo
+            enddo
+            if(dabs(N_scalar).gt.1.d-16) then
+              delta_gamma_inc = -( g_val + tmp ) / N_scalar
+            else
+              delta_gamma_inc = 0.d0
+            endif
+            histi(1) = delta_gamma_inc
+          else
+            histi(1) = 0.d0
+          endif
+
+
 c
 c         === Compute Local Stresses ===
 c            print'("--------------------------------ig=",2I5)',ig,MATYPE
@@ -180,6 +230,13 @@ c            print'("--------------------------------ig=",2I5)',ig,MATYPE
      &                    ctol,  vons, e_dns, p_dns,
      &                   ctens,
      &                  ierror )
+          
+          elseif(MATYPE.eq.4) then
+            CALL stress_dp_bn(itrmax, idepg,
+     &                   prope,   sig,   str, ehist,
+     &                    ctol,  vons, e_dns, p_dns,
+     &                   ctens, g_val,
+     &                  ierror,  itr , histi )
           else
             STOP 'Something wrong in phexa8'
           endif

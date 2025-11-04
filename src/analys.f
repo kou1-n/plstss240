@@ -64,6 +64,7 @@ c
       dimension sk(NGSK)
       dimension dhist0(20,ngaus,nelx),dhist1(20,ngaus,nelx)
       dimension histi0(50,ngaus,nelx)
+      double precision gmax, gtmp
 c
 c     --- arrays and parameters for PARDISO solver ---
       integer*8 pt(64)
@@ -357,6 +358,16 @@ c         CALL CPU_TIME(  sec0)
      &                tene_e,dene_p,  temp, dtemp, tempd,
      &                dndx_g, det_g,ctensg,
      &                ierror, itr , histi0)
+
+c         --- Block Newton: monitor max |g| over all GPs ---
+          gmax = 0.d0
+          do nel=1,nelx
+            do ig=1,ngaus
+              gtmp = dabs(histi0(6,ig,nel))
+              if(gtmp.gt.gmax) gmax = gtmp
+            enddo
+          enddo
+
           if(ierror.ne.0) RETURN
 c         CALL CPU_TIME(  sec1)
 c         WRITE(*,102) sec1 -sec0
@@ -420,7 +431,7 @@ c
           WRITE(*,8004) df,dfact,arc
           WRITE(*,8003) dsqrt(rnorm),dsqrt(fnorm),rbf
 c
-          if(rbf.lt.ctol) then
+          if( (rbf.lt.ctol) .and. (gmax.lt.ctol) ) then
             GOTO 1500
           endif
 c

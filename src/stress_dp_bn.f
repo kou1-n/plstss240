@@ -250,22 +250,22 @@ c           初回塑性：g_valを1%に減衰して安定化
           endif
 c
 c         === DEBUG OUTPUT for BOX 2 initialization (Paper monitoring) ===
-          if(idepg.eq.1 .and. itr.le.10) then
-            write(*,'(A)') ' '
-            write(*,'(A,I3,A)') '=== BOX 2 INIT: Iter ', itr, ' ==='
-            write(*,'(A,E12.5)') '  Trial yield f^tr = ', gg
-            write(*,'(A,E12.5)') '  ||s^tr|| = ', stno
-            write(*,'(A,E12.5)') '  p^tr = ', etrs
-            write(*,'(A,E12.5)') '  alpeg_old = ', alpeg_old
-            write(*,'(A,E12.5)') '  Hard H(alpha) = ', hard
-            write(*,'(A,E12.5)') '  dH/dalpha = ', dhard
-            write(*,'(A,E12.5)') '  Initial g_val = ', g_val
-            write(*,'(A,E12.5)') '  Initial deltag = ', deltag
-            write(*,'(A,E12.5,A,E12.5)') '  eta_dp = ', eta_dp,
-     &                           ', xi_dp = ', xi_dp
-            write(*,'(A,E12.5,A,E12.5)') '  etabar_dp = ', etabar_dp,
-     &                           ', yld = ', yld
-          endif
+c          if(idepg.eq.1 .and. itr.le.10) then
+c            write(*,'(A)') ' '
+c            write(*,'(A,I3,A)') '=== BOX 2 INIT: Iter ', itr, ' ==='
+c            write(*,'(A,E12.5)') '  Trial yield f^tr = ', gg
+c            write(*,'(A,E12.5)') '  ||s^tr|| = ', stno
+c            write(*,'(A,E12.5)') '  p^tr = ', etrs
+c            write(*,'(A,E12.5)') '  alpeg_old = ', alpeg_old
+c            write(*,'(A,E12.5)') '  Hard H(alpha) = ', hard
+c            write(*,'(A,E12.5)') '  dH/dalpha = ', dhard
+c!             write(*,'(A,E12.5)') '  Initial g_val = ', g_val
+c            write(*,'(A,E12.5)') '  Initial deltag = ', deltag
+c            write(*,'(A,E12.5,A,E12.5)') '  eta_dp = ', eta_dp,
+c     &                           ', xi_dp = ', xi_dp
+c            write(*,'(A,E12.5,A,E12.5)') '  etabar_dp = ', etabar_dp,
+c     &                           ', yld = ', yld
+c          endif
 c
 c         === BOX 2 STEP 2: Compute tangent moduli for first calculation ===
 c
@@ -303,21 +303,19 @@ c         Keep Dg for backward compatibility
           Dg = N_scalar
 c
 c         === DEBUG: Matrix components (Paper eq. 47-50) ===
-          if(idepg.eq.1 .and. itr.le.10) then
-            write(*,'(A)') '--- Matrix Components (Box 2 Step 2) ---'
-            write(*,'(A,E12.5)') '  2*mu = ', 2.d0*vmu
-            write(*,'(A,E12.5)') '  kappa = ', vkp
-            write(*,'(A,E12.5)') '  N_scalar = ', N_scalar
-            write(*,'(A,E12.5)') '  N_elastic = ', N_elastic
-            write(*,'(A,3E12.5)') '  L_mat(1,:) = ',
-     &                            L_mat(1,1), L_mat(1,2), L_mat(1,3)
-            write(*,'(A,3E12.5)') '  M_mat(1,:) = ',
-     &                            M_mat(1,1), M_mat(1,2), M_mat(1,3)
-            write(*,'(A,E12.5)') '  oun(1,1) = ', oun(1,1)
-            write(*,'(A,E12.5)') '  oun(2,2) = ', oun(2,2)
-            write(*,'(A,E12.5)') '  oun(3,3) = ', oun(3,3)
-            write(*,'(A)') '================================='
-          endif
+c          if(idepg.eq.1 .and. itr.le.10) then
+c            write(*,'(A)') '--- Matrix Components (Box 2 Step 2) ---'
+c            write(*,'(A,E12.5)') '  2*mu = ', 2.d0*vmu
+c            write(*,'(A,E12.5)') '  kappa = ', vkp
+c            write(*,'(A,E12.5)') '  N_scalar = ', N_scalar
+c            write(*,'(A,E12.5)') '  N_elastic = ', N_elastic
+c            write(*,'(A,E12.5)') '  L_mat(1,1) = ', L_mat(1,1)
+c            write(*,'(A,E12.5)') '  M_mat(1,1) = ', M_mat(1,1)
+c            write(*,'(A,E12.5)') '  oun(1,1) = ', oun(1,1)
+c            write(*,'(A,E12.5)') '  oun(2,2) = ', oun(2,2)
+c            write(*,'(A,E12.5)') '  oun(3,3) = ', oun(3,3)
+c            write(*,'(A)') '================================='
+c          endif
         else
 c         === BOX 1 STEP 2: Block Newton (no local iteration) ===
 c         Following Yamamoto et al.: direct state update without local Newton
@@ -327,15 +325,15 @@ c         === Check consistency parameter Δγ^(k+1) ===
           if(deltag.lt.0.d0) deltag = 0.d0
 c
 c         === DEBUG: BOX 1 iteration state (Paper monitoring) ===
-          if(idepg.eq.1 .and. itr.le.10) then
-            write(*,'(A)') ' '
-            write(*,'(A,I3,A)') '=== BOX 1: Iter ', itr, ' ==='
-            write(*,'(A,E12.5)') '  delta_gamma_inc = ', delta_gamma_inc
-            write(*,'(A,E12.5)') '  deltag_prev = ', deltag_prev
-            write(*,'(A,E12.5)') '  deltag (cumul) = ', deltag
-            write(*,'(A,E12.5)') '  alpeg_old = ', alpeg_old
-            write(*,'(A,E12.5)') '  ftri (prev f) = ', ftri
-          endif
+c          if(idepg.eq.1 .and. itr.le.10) then
+c            write(*,'(A)') ' '
+c            write(*,'(A,I3,A)') '=== BOX 1: Iter ', itr, ' ==='
+c            write(*,'(A,E12.5)') '  delta_gamma_inc = ', delta_gamma_inc
+c            write(*,'(A,E12.5)') '  deltag_prev = ', deltag_prev
+c            write(*,'(A,E12.5)') '  deltag (cumul) = ', deltag
+c            write(*,'(A,E12.5)') '  alpeg_old = ', alpeg_old
+c            write(*,'(A,E12.5)') '  ftri (prev f) = ', ftri
+c          endif
 c
 c         === BOX 1: Update state variables INCREMENTALLY ===
 c         CORRECTED: Use only the increment delta_gamma_inc, not cumulative
@@ -357,12 +355,12 @@ c         Update hardening for NEW state
           dhard_new = hpd*(hk +hpb*(hpa -yld)*dexp(-hpb*alpeg_new))
 c
 c         === DEBUG: State after update ===
-          if(idepg.eq.1 .and. itr.le.10) then
-            write(*,'(A)') '  --- After state update ---'
-            write(*,'(A,E12.5)') '  alpeg_new = ', alpeg_new
-            write(*,'(A,E12.5)') '  hard_new = ', hard_new
-            write(*,'(A,E12.5)') '  dhard_new = ', dhard_new
-          endif
+c          if(idepg.eq.1 .and. itr.le.10) then
+c            write(*,'(A)') '  --- After state update ---'
+c!             write(*,'(A,E12.5)') '  alpeg_new = ', alpeg_new
+c            write(*,'(A,E12.5)') '  hard_new = ', hard_new
+c            write(*,'(A,E12.5)') '  dhard_new = ', dhard_new
+c          endif
 c
 c         === Update L, M, N matrices for current iteration ===
 c         L = -C^e : (n + α/3*I) = -2μn - κα/3*I (Drucker-Prager)
@@ -392,15 +390,15 @@ c         Ensure N_scalar is numerically stable (相対閾値)
           endif
 c
 c         === DEBUG: Updated N_scalar ===
-          if(idepg.eq.1 .and. itr.le.10) then
-            write(*,'(A)') '  --- Updated N_scalar ---'
-            write(*,'(A,E12.5)') '  N_scalar = ', N_scalar
-            write(*,'(A,E12.5)') '  Term1: -2mu = ', -2.d0*vmu
-            write(*,'(A,E12.5)') '  Term2: -kappa*eta*etabar = ',
-     &                            -vkp*etabar_dp*eta_dp
-            write(*,'(A,E12.5)') '  Term3: -xi*dH/sqrt3 = ',
-     &                            -xi_dp*dhard_new/sqrt3
-          endif
+c          if(idepg.eq.1 .and. itr.le.10) then
+c            write(*,'(A)') '  --- Updated N_scalar ---'
+c            write(*,'(A,E12.5)') '  N_scalar = ', N_scalar
+c            write(*,'(A,E12.5)') '  Term1: -2mu = ', -2.d0*vmu
+c            write(*,'(A,E12.5)') '  Term2: -kappa*eta*etabar = ',
+c     &                            -vkp*etabar_dp*eta_dp
+c            write(*,'(A,E12.5)') '  Term3: -xi*dH/sqrt3 = ',
+c     &                            -xi_dp*dhard_new/sqrt3
+c          endif
 c
 c         Update stress with increment: σ = κtr[ε]I + s^tr - √2μΔγn
           do jj=1,3
@@ -425,14 +423,14 @@ c         === Evaluate yield function with updated state ===
      &          - xi_dp*(yld + hard_new)
 c
 c         === DEBUG: Yield function evaluation ===
-          if(idepg.eq.1 .and. itr.le.10) then
-            write(*,'(A)') '  --- Yield function g(u,gamma) ---'
-            write(*,'(A,E12.5)') '  ||s|| after update = ', stno
-            write(*,'(A,E12.5)') '  p after update = ', smean
-            write(*,'(A,E12.5)') '  g_val (residual) = ', g_val
-            write(*,'(A,E12.5)') '  Relative |g|/yld = ',
-     &                            dabs(g_val)/yld
-          endif
+c          if(idepg.eq.1 .and. itr.le.10) then
+c            write(*,'(A)') '  --- Yield function g(u,gamma) ---'
+c            write(*,'(A,E12.5)') '  ||s|| after update = ', stno
+c            write(*,'(A,E12.5)') '  p after update = ', smean
+c!             write(*,'(A,E12.5)') '  g_val (residual) = ', g_val
+c            write(*,'(A,E12.5)') '  Relative |g|/yld = ',
+c     &                            dabs(g_val)/yld
+c          endif
         endif
 c
 c       === BOX 1 STEP 3: Compute tangent moduli ===
